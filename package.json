@@ -1,0 +1,59 @@
+{
+  "name": "itm-platform-timesheet",
+  "productName": "ITM Platform Timesheet",
+  "version": "1.0.0",
+  "description": "Control de timesheet de escritorio integrado con ITM Platform",
+  "author": "Actual Solutions",
+  "private": true,
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && tsc -p electron/tsconfig.json && vite build",
+    "start": "electron .",
+    "package": "npm run build && electron-builder",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p electron/tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vite-plugin-electron": "^0.29.0",
+    "vite-plugin-electron-renderer": "^0.14.6"
+  },
+  "build": {
+    "appId": "tech.actualsolutions.itmplatformtimesheet",
+    "productName": "ITM Platform Timesheet",
+    "files": [
+      "dist",
+      "dist-electron"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["universal"] },
+        { "target": "zip", "arch": ["universal"] }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.productivity"
+    }
+  }
+}
