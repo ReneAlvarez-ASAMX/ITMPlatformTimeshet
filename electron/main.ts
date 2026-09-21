@@ -99,8 +99,16 @@ function createWindow() {
   });
 }
 
+function trayIconPath(): string {
+  // El .ico trae varios tamaños (16–256 px) y Windows elige el adecuado para la bandeja.
+  const file = process.platform === "win32" ? "icon.ico" : "icon.png";
+  return path.join(process.env.APP_ROOT!, "build", file);
+}
+
 function createTray() {
-  const icon = nativeImage.createFromPath(iconPath());
+  let icon = nativeImage.createFromPath(trayIconPath());
+  // El PNG original es de 1024 px: fuera de Windows hay que reducirlo al tamaño de la bandeja.
+  if (process.platform !== "win32" && !icon.isEmpty()) icon = icon.resize({ width: 16, height: 16 });
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
   tray.setToolTip("ITM Platform Timesheet");
   updateTrayMenu();
