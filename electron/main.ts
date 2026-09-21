@@ -3,8 +3,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as itm from "./itmClient";
 import * as store from "./store";
-import type { AppState, Credentials, ReminderSettings, SubmitTimeEntriesRequest } from "./types";
-import { emptyAppState } from "./types";
+import type {
+  AppState,
+  AutoLaunchSettings,
+  Credentials,
+  ReminderSettings,
+  SubmitTimeEntriesRequest,
+} from "./types";
+import { defaultReminderSettings, emptyAppState } from "./types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +28,16 @@ let isQuitting = false;
 let normalBounds: Electron.Rectangle | null = null;
 let cachedState: AppState = emptyAppState();
 let reminderTimer: ReturnType<typeof setInterval> | null = null;
+let reminderSettings: ReminderSettings = defaultReminderSettings();
+// Último aviso (o inicio de seguimiento) de "¿sigues trabajando?" por temporizador activo; key: workItemId.
+const lastActiveCheckAt = new Map<string, number>();
+
+// Argumento con el que el sistema arranca la app al iniciar sesión, para que quede en la bandeja
+// en lugar de abrir la ventana principal.
+const AUTO_LAUNCH_ARGS = ["--hidden"];
+const ACTIVE_CHECK_TICK_MS = 15_000;
+const startedHidden =
+  process.argv.includes(AUTO_LAUNCH_ARGS[0]) || app.getLoginItemSettings().wasOpenedAtLogin;
 
 // Evita que se abran varias copias de la app a la vez: cada instancia tendría su propio
 // estado en memoria (cachedState) y podría desincronizarse de lo que el usuario ve en pantalla
@@ -52,6 +68,7 @@ function createWindow() {
     minHeight: NORMAL_MIN_SIZE.height,
     title: "ITM Platform Timesheet",
     autoHideMenuBar: true,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -66,6 +83,10 @@ function createWindow() {
     mainWindow.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 
+  mainWindow.once("ready-to-show", () => {
+    if (!startedHidden) mainWindow?.show();
+  });
+
   mainWindow.on("close", (event) => {
     if (!isQuitting) {
       event.preventDefault();
@@ -78,8 +99,16 @@ function createWindow() {
   });
 }
 
+function trayIconPath(): string {
+  // El .ico trae varios tamaños (16–256 px) y Windows elige el adecuado para la bandeja.
+  const file = process.platform === "win32" ? "icon.ico" : "icon.png";
+  return path.join(process.env.APP_ROOT!, "build", file);
+}
+
 function createTray() {
-  const icon = nativeImage.createFromPath(iconPath());
+  let icon = nativeImage.createFromPath(trayIconPath());
+  // El PNG original es de 1024 px: fuera de Windows hay que reducirlo al tamaño de la bandeja.
+  if (process.platform !== "win32" && !icon.isEmpty()) icon = icon.resize({ width: 16, height: 16 });
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
   tray.setToolTip("ITM Platform Timesheet");
   updateTrayMenu();
@@ -134,11 +163,11 @@ function hasRunningTimer(): boolean {
   return Object.values(cachedState.timers).some((t) => t.running);
 }
 
-function fireReminder() {
+function notify(title: string, body: string) {
   if (Notification.isSupported()) {
     const notification = new Notification({
-      title: "Recordatorio de timesheet",
-      body: "No tienes ningún temporizador activo. ¿En qué estás trabajando ahora?",
+      title,
+      body,
       icon: iconPath(),
       silent: true,
     });
@@ -151,16 +180,80 @@ function fireReminder() {
   shell.beep();
 }
 
+function fireReminder() {
+  notify(
+    "Recordatorio de timesheet",
+    "No tienes ningún temporizador activo. ¿En qué estás trabajando ahora?"
+  );
+}
+
 function restartReminderTimer(settings: ReminderSettings) {
+  reminderSettings = settings;
   if (reminderTimer) {
     clearInterval(reminderTimer);
     reminderTimer = null;
   }
+  // Reinicia la cuenta de los avisos de temporizador activo para que un cambio de
+  // intervalo (o reactivar la opción) no dispare un aviso inmediato por tiempo acumulado.
+  lastActiveCheckAt.clear();
+  syncActiveCheckTracking();
   if (!settings.enabled) return;
   const intervalMs = Math.max(1, settings.intervalMinutes) * 60_000;
   reminderTimer = setInterval(() => {
     if (!hasRunningTimer()) fireReminder();
   }, intervalMs);
+}
+
+/** Alinea el seguimiento de avisos con los temporizadores que están corriendo ahora mismo. */
+function syncActiveCheckTracking() {
+  const now = Date.now();
+  const runningKeys = new Set<string>();
+  for (const [key, timer] of Object.entries(cachedState.timers)) {
+    if (!timer.running) continue;
+    runningKeys.add(key);
+    if (!lastActiveCheckAt.has(key)) lastActiveCheckAt.set(key, now);
+  }
+  for (const key of lastActiveCheckAt.keys()) {
+    if (!runningKeys.has(key)) lastActiveCheckAt.delete(key);
+  }
+}
+
+/** Avisa "¿sigues trabajando?" por cada temporizador activo cada N minutos mientras siga corriendo. */
+function checkActiveTimers() {
+  if (!reminderSettings.activeCheckEnabled) return;
+  const now = Date.now();
+  const intervalMs = Math.max(1, reminderSettings.activeCheckIntervalMinutes) * 60_000;
+  const due: string[] = [];
+  for (const [key, timer] of Object.entries(cachedState.timers)) {
+    if (!timer.running) continue;
+    const last = lastActiveCheckAt.get(key) ?? now;
+    if (now - last >= intervalMs) {
+      lastActiveCheckAt.set(key, now);
+      due.push(`${timer.taskName} (${timer.projectName})`);
+    }
+  }
+  if (due.length === 0) return;
+  notify(
+    "Temporizador activo",
+    due.length === 1
+      ? `Sigue en marcha: ${due[0]}. ¿Continúas trabajando en esta tarea?`
+      : `Siguen en marcha ${due.length} temporizadores: ${due.join(", ")}. ¿Continúas trabajando en ellas?`
+  );
+}
+
+function getAutoLaunch(): AutoLaunchSettings {
+  return {
+    enabled: app.getLoginItemSettings({ args: AUTO_LAUNCH_ARGS }).openAtLogin,
+    supported: app.isPackaged,
+  };
+}
+
+function setAutoLaunch(enabled: boolean): AutoLaunchSettings {
+  // Sin empaquetar, el ejecutable sería electron.exe: no lo registramos como programa de inicio.
+  if (app.isPackaged) {
+    app.setLoginItemSettings({ openAtLogin: enabled, args: AUTO_LAUNCH_ARGS });
+  }
+  return getAutoLaunch();
 }
 
 app.on("before-quit", () => {
@@ -173,6 +266,7 @@ app.whenReady().then(async () => {
   createTray();
   cachedState = await store.loadAppState();
   restartReminderTimer(await store.loadReminderSettings());
+  setInterval(checkActiveTimers, ACTIVE_CHECK_TICK_MS);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -254,6 +348,7 @@ ipcMain.handle("state:load", async (): Promise<AppState> => {
 
 ipcMain.handle("state:save", async (_e, state: AppState) => {
   cachedState = state;
+  syncActiveCheckTracking();
   await store.saveAppState(state);
 });
 
@@ -272,4 +367,12 @@ ipcMain.handle("reminder:getSettings", async (): Promise<ReminderSettings> => {
 ipcMain.handle("reminder:setSettings", async (_e, settings: ReminderSettings) => {
   await store.saveReminderSettings(settings);
   restartReminderTimer(settings);
+});
+
+ipcMain.handle("autoLaunch:get", async (): Promise<AutoLaunchSettings> => {
+  return getAutoLaunch();
+});
+
+ipcMain.handle("autoLaunch:set", async (_e, enabled: boolean): Promise<AutoLaunchSettings> => {
+  return setAutoLaunch(enabled);
 });

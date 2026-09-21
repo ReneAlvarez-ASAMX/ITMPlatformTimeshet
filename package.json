@@ -33,7 +33,9 @@
     "productName": "ITM Platform Timesheet",
     "files": [
       "dist",
-      "dist-electron"
+      "dist-electron",
+      "build/icon.png",
+      "build/icon.ico"
     ],
     "directories": {
       "output": "release"

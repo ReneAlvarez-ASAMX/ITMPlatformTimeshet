@@ -110,8 +110,10 @@ export async function saveAppState(state: AppState): Promise<void> {
 }
 
 export async function loadReminderSettings(): Promise<ReminderSettings> {
-  const data = await readJson<ReminderSettings>(reminderPath());
-  return data ?? defaultReminderSettings();
+  const data = await readJson<Partial<ReminderSettings>>(reminderPath());
+  // Combina con los valores por defecto para no romper ajustes guardados
+  // antes de añadir un campo nuevo (p. ej. `activeCheckEnabled`).
+  return { ...defaultReminderSettings(), ...data };
 }
 
 export async function saveReminderSettings(settings: ReminderSettings): Promise<void> {
