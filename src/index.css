@@ -902,6 +902,39 @@ button:disabled {
   margin-left: auto;
 }
 
+.daily-favorites-ask {
+  width: 420px;
+}
+
+.daily-favorites-body {
+  padding: 16px 20px 4px;
+  font-size: 13px;
+}
+
+.daily-favorites-body p {
+  margin: 0 0 10px;
+}
+
+.daily-favorites-project {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.daily-favorites-project-name {
+  font-weight: 600;
+  font-size: 13px;
+  padding-top: 4px;
+}
+
+.daily-favorites-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding-left: 4px;
+}
+
 .review-actions {
   display: flex;
   justify-content: flex-end;

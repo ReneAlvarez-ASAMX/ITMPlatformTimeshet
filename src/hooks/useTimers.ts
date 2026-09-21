@@ -194,6 +194,16 @@ export function useTimers() {
     [persist]
   );
 
+  /** Reemplaza por completo la lista de tareas destacadas (p. ej. la selección diaria). */
+  const replaceFavorites = useCallback(
+    (workItemIds: number[]) => {
+      const next: Record<string, boolean> = {};
+      for (const id of workItemIds) next[String(id)] = true;
+      persist({ favorites: next });
+    },
+    [persist]
+  );
+
   /** Tras sincronizar con éxito, deja el acumulado local en cero (conservando si sigue corriendo). */
   const markSynced = useCallback(
     (workItemIds: number[]) => {
@@ -244,5 +254,6 @@ export function useTimers() {
     favorites: state.favorites,
     isFavorite,
     toggleFavorite,
+    replaceFavorites,
   };
 }

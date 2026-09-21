@@ -6,6 +6,7 @@ import { SyncBar } from "../components/SyncBar";
 import { MiniView } from "../components/MiniView";
 import { ReminderSettingsControl } from "../components/ReminderSettingsControl";
 import { AutoLaunchControl } from "../components/AutoLaunchControl";
+import { DailyFavoritesPrompt } from "../components/DailyFavoritesPrompt";
 import { SyncReviewPanel } from "../components/SyncReviewPanel";
 import { useTimesheet } from "../hooks/useTimesheet";
 import { useTimers } from "../hooks/useTimers";
@@ -29,6 +30,10 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+// La pregunta diaria de tareas destacadas solo se hace al iniciar la aplicación: esta marca vive
+// mientras el proceso del renderer siga abierto, así que "Cambiar cuenta" o cerrar a la bandeja no la repiten.
+let dailyFavoritesPromptHandled = false;
+
 export function TimesheetScreen({ account, onLogout }: Props) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => todayStr());
@@ -38,6 +43,7 @@ export function TimesheetScreen({ account, onLogout }: Props) {
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
   const [miniMode, setMiniModeState] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [dailyFavoritesOpen, setDailyFavoritesOpen] = useState(false);
   const startIso = toIsoDate(weekStart);
   const endIso = toIsoDate(addDays(weekStart, 6));
   const isToday = selectedDate === todayStr();
@@ -78,6 +84,20 @@ export function TimesheetScreen({ account, onLogout }: Props) {
     setFilterMode(hasFavorites ? "favorites" : "all");
     setDefaultFilterApplied(true);
   }, [defaultFilterApplied, timers.loaded, timers.favorites]);
+
+  // Pregunta diaria: una sola vez por arranque, cuando ya hay tareas y estado local cargados.
+  useEffect(() => {
+    if (dailyFavoritesPromptHandled || !timers.loaded || !data) return;
+    if (data.TimeReports.every((project) => project.WorkItems.length === 0)) return;
+    dailyFavoritesPromptHandled = true;
+    setDailyFavoritesOpen(true);
+  }, [timers.loaded, data]);
+
+  function handleDailyFavoritesSave(workItemIds: number[]) {
+    timers.replaceFavorites(workItemIds);
+    setFilterMode(workItemIds.length > 0 ? "favorites" : "all");
+    setDailyFavoritesOpen(false);
+  }
 
   const visibleProjects = useMemo(() => {
     if (filterMode === "active") {
@@ -236,6 +256,15 @@ export function TimesheetScreen({ account, onLogout }: Props) {
         itemErrors={itemErrors}
         onReview={() => setReviewOpen(true)}
       />
+
+      {dailyFavoritesOpen && data && (
+        <DailyFavoritesPrompt
+          projects={data.TimeReports.filter((project) => project.WorkItems.length > 0)}
+          favoriteCount={Object.keys(timers.favorites).length}
+          onSave={handleDailyFavoritesSave}
+          onClose={() => setDailyFavoritesOpen(false)}
+        />
+      )}
 
       {reviewOpen && (
         <SyncReviewPanel
