@@ -125,11 +125,23 @@ export interface AppState {
 export const emptyAppState = (): AppState => ({ timers: {}, favorites: {} });
 
 export interface ReminderSettings {
+  // Recordatorio "no tienes ningún temporizador activo".
   enabled: boolean;
   intervalMinutes: number;
+  // Recordatorio "¿sigues trabajando en esta tarea?" mientras hay un temporizador activo.
+  activeCheckEnabled: boolean;
+  activeCheckIntervalMinutes: number;
 }
 
 export const defaultReminderSettings = (): ReminderSettings => ({
   enabled: true,
   intervalMinutes: 5,
+  activeCheckEnabled: true,
+  activeCheckIntervalMinutes: 15,
 });
+
+export interface AutoLaunchSettings {
+  enabled: boolean;
+  // false en desarrollo (app sin empaquetar): registrar electron.exe como programa de inicio no tiene sentido.
+  supported: boolean;
+}

@@ -5,6 +5,7 @@ import { TaskList } from "../components/TaskList";
 import { SyncBar } from "../components/SyncBar";
 import { MiniView } from "../components/MiniView";
 import { ReminderSettingsControl } from "../components/ReminderSettingsControl";
+import { AutoLaunchControl } from "../components/AutoLaunchControl";
 import { SyncReviewPanel } from "../components/SyncReviewPanel";
 import { useTimesheet } from "../hooks/useTimesheet";
 import { useTimers } from "../hooks/useTimers";
@@ -152,6 +153,7 @@ export function TimesheetScreen({ account, onLogout }: Props) {
             placeholder="Buscar tarea o proyecto…"
           />
           <ReminderSettingsControl />
+          <AutoLaunchControl />
           <button className="btn-link" onClick={() => setMini(true)}>
             Modo mini
           </button>

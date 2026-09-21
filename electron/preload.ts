@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   AppState,
+  AutoLaunchSettings,
   Credentials,
   LoginResponse,
   ReminderSettings,
@@ -41,6 +42,11 @@ const api = {
 
   setReminderSettings: (settings: ReminderSettings): Promise<void> =>
     ipcRenderer.invoke("reminder:setSettings", settings),
+
+  getAutoLaunch: (): Promise<AutoLaunchSettings> => ipcRenderer.invoke("autoLaunch:get"),
+
+  setAutoLaunch: (enabled: boolean): Promise<AutoLaunchSettings> =>
+    ipcRenderer.invoke("autoLaunch:set", enabled),
 };
 
 contextBridge.exposeInMainWorld("itm", api);

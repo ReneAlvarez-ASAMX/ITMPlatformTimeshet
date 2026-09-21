@@ -759,6 +759,12 @@ button:disabled {
   font-size: 12px;
 }
 
+.reminder-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .reminder-interval {
   display: flex;
   align-items: center;
