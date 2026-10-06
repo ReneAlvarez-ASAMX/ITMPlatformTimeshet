@@ -848,6 +848,61 @@ button:disabled {
   color: var(--text-muted);
 }
 
+.sync-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sync-week {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.sync-pending {
+  font-size: 12px;
+}
+
+.task-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 12px;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  border-left: 3px solid var(--itm-orange);
+  border-radius: 3px;
+  padding: 4px 8px;
+  margin-top: 2px;
+  max-width: 520px;
+}
+
+.task-note.attempted {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-left-color: var(--danger);
+}
+
+.task-note .btn-link {
+  padding: 0;
+  font-size: 12px;
+}
+
+.day-progress-legend .day-progress-other {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.day-progress-legend .day-progress-other:hover {
+  color: var(--itm-navy);
+}
+
 .sync-info-empty {
   color: var(--success);
   display: inline-flex;

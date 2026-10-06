@@ -89,9 +89,23 @@ De arriba abajo:
 - **Indicador de horas del día**: barra y porcentaje respecto a la jornada (ver [sección 9](#9-el-indicador-de-horas-del-día)).
 - **Actualizar tareas**: vuelve a cargar tus tareas y las horas ya reportadas desde ITM Platform.
 
-**Lista de tareas**, agrupada por proyecto. En cada proyecto se ve el total reportado y, si lo hay, el tiempo **sin enviar**. Pulsa el nombre del proyecto para plegarlo o desplegarlo.
+**Lista de tareas**, agrupada por proyecto. La cabecera de cada proyecto indica **qué abarca cada cifra**:
 
-**Barra inferior**: resumen de lo pendiente de enviar y el botón **Revisar y enviar**.
+> `Hoy: 1h 39m · Semana: 2h 24m · Sin enviar: 2h`
+
+- **Hoy** (o la fecha del día seleccionado): lo reportado en ITM Platform ese día en el proyecto.
+- **Semana**: lo reportado en toda la semana que estás viendo.
+- **Sin enviar**: el tiempo pendiente de enviar del proyecto, **de cualquier fecha** (puede incluir días de otras semanas).
+
+Pulsa el nombre del proyecto para plegarlo o desplegarlo.
+
+**Barra inferior**: dos líneas y el botón **Revisar y enviar**.
+
+> `Semana 05 oct – 11 oct: 2h 43m en ITM + 2h 24m sin enviar = 5h 7m de 40h (13%)`
+> `3 tareas con 4h 24m sin enviar — 01 oct: 2h · 05 oct: 15m · Hoy: 2h 9m`
+
+- La primera línea es el **resumen de la semana**: lo ya reportado en ITM, más lo pendiente cuya fecha cae en esa semana, frente a las 40 horas de la semana (8 h de lunes a viernes).
+- La segunda es **todo** lo pendiente de enviar, **desglosado por la fecha a la que corresponde** cada parte, aunque sea de otra semana.
 
 **Pie**: *Desarrollado por Actual Solutions*, con enlace a la página de la herramienta.
 
@@ -100,7 +114,8 @@ De arriba abajo:
 Cada tarea muestra:
 - ⭐ **Estrella**: marcarla como destacada.
 - **Nombre** de la tarea.
-- **Reportadas**: *"Hoy: 2h 30m reportadas"* es lo que ya está registrado en ITM Platform para el día seleccionado. Si hay tiempo pendiente, añade *"· 57m sin enviar"*.
+- **Reportadas**: *"Hoy: 2h 30m reportadas"* es lo que ya está registrado en ITM Platform para el día seleccionado.
+- **Sin enviar con su fecha**: si hay tiempo pendiente, se añade *"· 57m sin enviar (Hoy)"*. Lo que va entre paréntesis es **el día al que pertenece ese tiempo**, por ejemplo *"· 2h sin enviar (01 oct)"*.
 - **Reloj** a la derecha y botón **Iniciar / Pausar**.
 - Una **barra naranja** a la izquierda y fondo cálido indican que su temporizador está **en marcha**.
 
@@ -134,7 +149,13 @@ El progreso se **guarda automáticamente** en tu equipo. Si la aplicación o el 
 
 ### Una tarea con tiempo de otro día
 
-Si una tarea tiene tiempo **sin enviar de un día anterior**, la aplicación no te dejará iniciarla de nuevo hasta que envíes esas horas. Verás el aviso *"Tienes tiempo sin enviar de otro día en esta tarea"*. Ve a [Enviar las horas](#7-enviar-las-horas-a-itm-platform) y vuelve a intentarlo.
+Una tarea solo puede acumular tiempo pendiente de **un día** a la vez. Si tiene tiempo **sin enviar de otra fecha**, no podrás iniciarla ni añadirle tiempo manual para otro día hasta que lo envíes. Esto afecta **solo a esa tarea**: el resto de tus tareas funcionan con normalidad.
+
+La propia tarea te lo avisa de antemano con una nota naranja, con el tiempo y la fecha exactos y un enlace **Revisar y enviar**:
+
+> *Tiene 2h sin enviar del 01 oct. Para registrar tiempo de otro día en esta tarea, primero envía esas horas.*
+
+Si pulsas **Iniciar** igualmente, la nota se pone en rojo y el temporizador no arranca. Envía esas horas (ver [Enviar las horas](#7-enviar-las-horas-a-itm-platform)) y la tarea quedará libre.
 
 ---
 
@@ -228,6 +249,7 @@ Cómo interpretarlo:
 - Si **superas el 100 %** el porcentaje se pone en **verde** y la barra se reparte entre las dos partes.
 - En **sábado y domingo** no hay jornada: se muestra **"Día no laborable"** y el porcentaje aparece como "—". Si trabajas ese día, sus horas se muestran igualmente.
 - El indicador sigue al **día que selecciones**. Mientras un temporizador corre, se actualiza cada segundo.
+- **Otros días**: si tienes tiempo sin enviar de **otras fechas**, aparece un cuarto elemento (por ejemplo *"Otros días 2h 15m"*). **No cuenta en el porcentaje** de este día, pero sí en el total de la barra inferior. Púlsalo para abrir la revisión y ver cada parte con su fecha.
 - La jornada es fija (8 horas); no tiene en cuenta festivos ni vacaciones.
 
 ---
@@ -326,7 +348,7 @@ Solo aparecen las tareas asignadas a ti dentro de la semana que estás viendo. C
 **No puedo pulsar "Iniciar".**
 Los temporizadores solo se inician en el **día de hoy**; si estás viendo otro día, usa **Añadir tiempo manual**. También puede ser que la tarea no admita horas ese día.
 
-**"Tienes tiempo sin enviar de otro día en esta tarea".**
+**Una tarea muestra "Tiene X sin enviar del …" y no me deja iniciarla.**
 La tarea tiene tiempo pendiente de una fecha anterior. Envíalo con **Revisar y enviar** y después podrás volver a usarla.
 
 **Mis horas no cuadran con ITM Platform.**

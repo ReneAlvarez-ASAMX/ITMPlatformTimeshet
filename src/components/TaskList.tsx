@@ -13,6 +13,7 @@ interface Props {
   onToggleProject: (entityId: number) => void;
   selectedDate: string;
   isToday: boolean;
+  onReviewPending: () => void;
 }
 
 /**
@@ -46,6 +47,7 @@ export function TaskList({
   onToggleProject,
   selectedDate,
   isToday,
+  onReviewPending,
 }: Props) {
   const { t, locale } = useI18n();
   const dayLabel = isToday ? t("header.today") : formatDayShort(selectedDate, locale);
@@ -75,7 +77,12 @@ export function TaskList({
                 {t("list.projectDay", { day: dayLabel, time: formatShort(daySeconds) })}
                 {" · "}
                 {t("list.projectWeek", { time: formatShort(weekSeconds) })}
-                {pendingSeconds > 0 && t("list.projectUnsent", { time: formatShort(pendingSeconds) })}
+                {pendingSeconds > 0 && (
+                  <>
+                    {" · "}
+                    {t("list.projectUnsent", { time: formatShort(pendingSeconds) })}
+                  </>
+                )}
               </span>
               <span className="project-count">{project.WorkItems.length}</span>
             </button>
@@ -93,6 +100,7 @@ export function TaskList({
                     isRunning={Boolean(timer?.running)}
                     startedAt={timer?.startedAt ?? null}
                     elapsedSeconds={timers.getElapsedSeconds(wi.WorkItemId)}
+                    pendingDate={timer?.date ?? null}
                     comment={timer?.comment ?? ""}
                     isFavorite={timers.isFavorite(wi.WorkItemId)}
                     onToggleFavorite={(id) => timers.toggleFavorite(id)}
@@ -102,6 +110,7 @@ export function TaskList({
                     onEditAccumulated={(id, seconds) => timers.setAccumulatedSeconds(id, seconds)}
                     onSetComment={(id, comment) => timers.setComment(id, comment)}
                     onAdjustStart={(id, newStartedAt) => timers.adjustStartTime(id, newStartedAt)}
+                    onReviewPending={onReviewPending}
                   />
                 );
               })}

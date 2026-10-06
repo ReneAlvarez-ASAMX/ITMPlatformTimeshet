@@ -9,6 +9,7 @@ export interface PendingItem {
   workItemId: number;
   entityId: number;
   taskName: string;
+  projectName: string;
   date: string;
   seconds: number;
   comment: string;
@@ -40,11 +41,13 @@ export function collectPending(
       workItemId: t.workItemId,
       entityId: t.entityId,
       taskName: t.taskName,
+      projectName: t.projectName,
       date: t.date,
       seconds: getElapsedSeconds(t.workItemId),
       comment: t.comment ?? "",
     }))
-    .filter((t) => t.seconds >= MIN_SYNCABLE_SECONDS);
+    .filter((t) => t.seconds >= MIN_SYNCABLE_SECONDS)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.taskName.localeCompare(b.taskName));
 }
 
 export function useSync() {

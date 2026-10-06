@@ -10,6 +10,8 @@ interface Props {
   pendingSeconds: number;
   /** Segundos sin enviar de otras fechas: no cuentan en el porcentaje, pero se muestran aparte. */
   otherDaysSeconds?: number;
+  /** Abre la revisión de pendientes al pulsar «Otros días». */
+  onReviewOtherDays?: () => void;
 }
 
 /** "8h" en lugar de "8h 0m" para horas exactas. */
@@ -23,6 +25,7 @@ export function DayProgress({
   reportedSeconds,
   pendingSeconds,
   otherDaysSeconds = 0,
+  onReviewOtherDays,
 }: Props) {
   const { t } = useI18n();
   const totalSeconds = reportedSeconds + pendingSeconds;
@@ -65,10 +68,15 @@ export function DayProgress({
           {t("day.unsent", { time: formatHours(pendingSeconds) })}
         </span>
         {otherDaysSeconds >= 30 && (
-          <span className="day-progress-other" title={t("day.otherDaysHint")}>
+          <button
+            type="button"
+            className="day-progress-other"
+            title={t("day.otherDaysHint")}
+            onClick={onReviewOtherDays}
+          >
             <i className="dot other" />
             {t("day.otherDays", { time: formatHours(otherDaysSeconds) })}
-          </span>
+          </button>
         )}
         <span>
           {hasTarget ? t("day.workday", { time: formatHours(targetSeconds) }) : t("day.nonWorking")}

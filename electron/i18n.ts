@@ -61,6 +61,8 @@ const es = {
   "header.refreshing": "Actualizando…",
   "week.previous": "Semana anterior",
   "week.next": "Semana siguiente",
+  "week.summary":
+    "Semana {range}: {reported} en ITM + {pending} sin enviar = {total} de {target} ({percent}%)",
 
   // Lista de tareas
   "list.loading": "Cargando tareas…",
@@ -70,7 +72,7 @@ const es = {
   "list.empty": "No se encontraron tareas para este periodo.",
   "list.projectDay": "{day}: {time}",
   "list.projectWeek": "Semana: {time}",
-  "list.projectUnsent": " + {time} sin enviar",
+  "list.projectUnsent": "Sin enviar: {time}",
   "filter.all": "Todas las tareas",
   "filter.favorites": "Destacadas",
   "filter.active": "Con temporizador activo",
@@ -79,7 +81,9 @@ const es = {
   "task.favorite.add": "Marcar como destacada",
   "task.favorite.remove": "Quitar de destacadas",
   "task.reported": "{day}: {time} reportadas",
-  "task.unsentSuffix": " · {time} sin enviar",
+  "task.unsentOn": " · {time} sin enviar ({date})",
+  "task.otherDayNote":
+    "Tiene {time} sin enviar del {date}. Para registrar tiempo de otro día en esta tarea, primero envía esas horas.",
   "task.noTimeAllowed": "Esta tarea no admite registro de horas este día.",
   "task.startLabel": "Inicio:",
   "task.startedAt": "Iniciado a las {time} · ajustar",
@@ -92,8 +96,6 @@ const es = {
   "task.pause": "Pausar",
   "task.error.amount": "No se pudo corregir el tiempo.",
   "task.error.start": "No se pudo ajustar la hora de inicio.",
-  "task.error.stale":
-    "Tienes tiempo sin enviar de otro día en esta tarea. Envía esas horas antes de continuar.",
   "task.error.generic": "No se pudo registrar el tiempo.",
 
   // Envío de horas
@@ -102,6 +104,7 @@ const es = {
   "sync.allSynced": "Todo sincronizado",
   "sync.itemErrors": "Algunas tareas no se pudieron enviar: {errors}",
   "sync.review": "Revisar y enviar",
+  "sync.pendingDetail": "{summary} — {breakdown}",
   "sync.error.send": "No se pudieron enviar las horas.",
   "sync.error.generic": "Error al enviar las horas a ITM Platform.",
   "review.title": "Revisar antes de enviar",
@@ -138,7 +141,7 @@ const es = {
   "day.workday": "Jornada {time}",
   "day.otherDays": "Otros días {time}",
   "day.otherDaysHint":
-    "Tiempo sin enviar de otras fechas. No cuenta en el porcentaje de este día, pero sí en el total de la barra inferior.",
+    "Tiempo sin enviar de otras fechas. No cuenta en el porcentaje de este día, pero sí en el total de la barra inferior. Púlsalo para revisar esas horas.",
 
   // Recordatorios
   "reminders.title": "Recordatorios",
@@ -237,6 +240,8 @@ const en: Dictionary = {
   "header.refreshing": "Refreshing…",
   "week.previous": "Previous week",
   "week.next": "Next week",
+  "week.summary":
+    "Week {range}: {reported} in ITM + {pending} unsent = {total} of {target} ({percent}%)",
 
   "list.loading": "Loading tasks…",
   "list.loadError": "Could not load the timesheet.",
@@ -245,7 +250,7 @@ const en: Dictionary = {
   "list.empty": "No tasks found for this period.",
   "list.projectDay": "{day}: {time}",
   "list.projectWeek": "Week: {time}",
-  "list.projectUnsent": " + {time} unsent",
+  "list.projectUnsent": "Unsent: {time}",
   "filter.all": "All tasks",
   "filter.favorites": "Starred",
   "filter.active": "With active timer",
@@ -253,7 +258,9 @@ const en: Dictionary = {
   "task.favorite.add": "Star this task",
   "task.favorite.remove": "Remove from starred",
   "task.reported": "{day}: {time} reported",
-  "task.unsentSuffix": " · {time} unsent",
+  "task.unsentOn": " · {time} unsent ({date})",
+  "task.otherDayNote":
+    "It has {time} unsent from {date}. To record time on another day for this task, send those hours first.",
   "task.noTimeAllowed": "This task does not allow time entries on this day.",
   "task.startLabel": "Start:",
   "task.startedAt": "Started at {time} · adjust",
@@ -266,8 +273,6 @@ const en: Dictionary = {
   "task.pause": "Pause",
   "task.error.amount": "Could not correct the time.",
   "task.error.start": "Could not adjust the start time.",
-  "task.error.stale":
-    "You have unsent time from another day on this task. Send those hours before continuing.",
   "task.error.generic": "Could not record the time.",
 
   "sync.pendingOne": "{count} task with {time} unsent",
@@ -275,6 +280,7 @@ const en: Dictionary = {
   "sync.allSynced": "Everything synced",
   "sync.itemErrors": "Some tasks could not be sent: {errors}",
   "sync.review": "Review and send",
+  "sync.pendingDetail": "{summary} — {breakdown}",
   "sync.error.send": "The hours could not be sent.",
   "sync.error.generic": "Error sending the hours to ITM Platform.",
   "review.title": "Review before sending",
@@ -309,7 +315,7 @@ const en: Dictionary = {
   "day.workday": "Workday {time}",
   "day.otherDays": "Other days {time}",
   "day.otherDaysHint":
-    "Unsent time from other dates. It does not count towards this day's percentage, but it is included in the total of the bottom bar.",
+    "Unsent time from other dates. It does not count towards this day's percentage, but it is included in the total of the bottom bar. Click to review those hours.",
 
   "reminders.title": "Reminders",
   "reminders.disabled": "Disabled",
@@ -395,6 +401,8 @@ const pt: Dictionary = {
   "header.refreshing": "Atualizando…",
   "week.previous": "Semana anterior",
   "week.next": "Próxima semana",
+  "week.summary":
+    "Semana {range}: {reported} no ITM + {pending} não enviadas = {total} de {target} ({percent}%)",
 
   "list.loading": "Carregando tarefas…",
   "list.loadError": "Não foi possível carregar o timesheet.",
@@ -403,7 +411,7 @@ const pt: Dictionary = {
   "list.empty": "Nenhuma tarefa encontrada para este período.",
   "list.projectDay": "{day}: {time}",
   "list.projectWeek": "Semana: {time}",
-  "list.projectUnsent": " + {time} não enviadas",
+  "list.projectUnsent": "Não enviadas: {time}",
   "filter.all": "Todas as tarefas",
   "filter.favorites": "Destacadas",
   "filter.active": "Com cronômetro ativo",
@@ -411,7 +419,9 @@ const pt: Dictionary = {
   "task.favorite.add": "Marcar como destacada",
   "task.favorite.remove": "Remover das destacadas",
   "task.reported": "{day}: {time} reportadas",
-  "task.unsentSuffix": " · {time} não enviadas",
+  "task.unsentOn": " · {time} não enviadas ({date})",
+  "task.otherDayNote":
+    "Tem {time} não enviadas de {date}. Para registrar tempo de outro dia nesta tarefa, envie primeiro essas horas.",
   "task.noTimeAllowed": "Esta tarefa não permite lançamento de horas neste dia.",
   "task.startLabel": "Início:",
   "task.startedAt": "Iniciado às {time} · ajustar",
@@ -424,8 +434,6 @@ const pt: Dictionary = {
   "task.pause": "Pausar",
   "task.error.amount": "Não foi possível corrigir o tempo.",
   "task.error.start": "Não foi possível ajustar o horário de início.",
-  "task.error.stale":
-    "Você tem tempo não enviado de outro dia nesta tarefa. Envie essas horas antes de continuar.",
   "task.error.generic": "Não foi possível registrar o tempo.",
 
   "sync.pendingOne": "{count} tarefa com {time} não enviadas",
@@ -433,6 +441,7 @@ const pt: Dictionary = {
   "sync.allSynced": "Tudo sincronizado",
   "sync.itemErrors": "Algumas tarefas não puderam ser enviadas: {errors}",
   "sync.review": "Revisar e enviar",
+  "sync.pendingDetail": "{summary} — {breakdown}",
   "sync.error.send": "Não foi possível enviar as horas.",
   "sync.error.generic": "Erro ao enviar as horas ao ITM Platform.",
   "review.title": "Revisar antes de enviar",
@@ -467,7 +476,7 @@ const pt: Dictionary = {
   "day.workday": "Jornada {time}",
   "day.otherDays": "Outros dias {time}",
   "day.otherDaysHint":
-    "Tempo não enviado de outras datas. Não conta na porcentagem deste dia, mas está incluído no total da barra inferior.",
+    "Tempo não enviado de outras datas. Não conta na porcentagem deste dia, mas está incluído no total da barra inferior. Clique para revisar essas horas.",
 
   "reminders.title": "Lembretes",
   "reminders.disabled": "Desativados",
