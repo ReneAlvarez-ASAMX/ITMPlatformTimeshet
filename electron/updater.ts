@@ -28,6 +28,10 @@ function setStatus(next: Partial<UpdateStatus> & Pick<UpdateStatus, "state">) {
 /** Convierte el error técnico del actualizador (a menudo un volcado de cabeceras HTTP) en un mensaje legible. */
 function friendlyError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
+  // El repositorio es accesible pero aún no tiene ninguna Release publicada.
+  if (/No published versions/i.test(raw)) {
+    return "Todavía no hay versiones publicadas en GitHub.";
+  }
   if (/\b(401|403|404)\b/.test(raw) || raw.includes("releases.atom")) {
     return "No se pudieron consultar las versiones publicadas. Es posible que todavía no haya ninguna disponible.";
   }
