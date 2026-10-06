@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
+  AppMode,
   AppState,
   AutoLaunchSettings,
   Credentials,
@@ -27,6 +28,10 @@ const api = {
     payload: SubmitTimeEntriesRequest
   ): Promise<SubmitTimeEntriesResponse> =>
     ipcRenderer.invoke("itm:submitTimeEntries", payload),
+
+  getMode: (): Promise<AppMode> => ipcRenderer.invoke("mode:get"),
+
+  setMode: (demo: boolean): Promise<{ ok: boolean }> => ipcRenderer.invoke("mode:set", demo),
 
   loadState: (): Promise<AppState> => ipcRenderer.invoke("state:load"),
 

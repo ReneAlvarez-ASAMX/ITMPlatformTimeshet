@@ -11,6 +11,9 @@ import { UpdateControl } from "../components/UpdateControl";
 import { BrandMark, Icon } from "../components/Icon";
 import { DayProgress } from "../components/DayProgress";
 import { PoweredBy } from "../components/PoweredBy";
+import { useSecretTaps } from "../hooks/useSecretTaps";
+import { switchMode } from "../modeSwitch";
+import type { AppMode } from "../../electron/types";
 import { SyncReviewPanel } from "../components/SyncReviewPanel";
 import { useTimesheet } from "../hooks/useTimesheet";
 import { useTimers } from "../hooks/useTimers";
@@ -27,6 +30,7 @@ import {
 
 interface Props {
   account: { company: string; userId: string };
+  mode: AppMode;
   onLogout: () => void;
 }
 
@@ -46,7 +50,7 @@ function capitalize(text: string): string {
 // mientras el proceso del renderer siga abierto, así que "Cambiar cuenta" o cerrar a la bandeja no la repiten.
 let dailyFavoritesPromptHandled = false;
 
-export function TimesheetScreen({ account, onLogout }: Props) {
+export function TimesheetScreen({ account, mode, onLogout }: Props) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => todayStr());
   const [search, setSearch] = useState("");
@@ -56,6 +60,7 @@ export function TimesheetScreen({ account, onLogout }: Props) {
   const [miniMode, setMiniModeState] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [dailyFavoritesOpen, setDailyFavoritesOpen] = useState(false);
+  const onSecretTap = useSecretTaps(() => switchMode(mode.demo));
   const startIso = toIsoDate(weekStart);
   const endIso = toIsoDate(addDays(weekStart, 6));
   const isToday = selectedDate === todayStr();
@@ -188,11 +193,16 @@ export function TimesheetScreen({ account, onLogout }: Props) {
 
   return (
     <div className="timesheet-screen">
-      <header className="app-header">
+      <header className={`app-header ${mode.demo ? "demo" : ""}`}>
         <div className="brand">
-          <BrandMark />
+          <span className="brand-tap" onClick={onSecretTap}>
+            <BrandMark />
+          </span>
           <div className="brand-text">
-            <h1>ITM Platform</h1>
+            <div className="brand-title">
+              <h1>ITM Platform</h1>
+              {mode.demo && <span className="demo-badge">DEMO</span>}
+            </div>
             <span className="account-label">TIMESHEET · {account.company}</span>
           </div>
         </div>

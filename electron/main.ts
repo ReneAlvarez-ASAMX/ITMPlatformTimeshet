@@ -5,13 +5,20 @@ import * as itm from "./itmClient";
 import * as store from "./store";
 import * as updater from "./updater";
 import type {
+  AppMode,
   AppState,
   AutoLaunchSettings,
   Credentials,
   ReminderSettings,
   SubmitTimeEntriesRequest,
 } from "./types";
-import { defaultReminderSettings, emptyAppState } from "./types";
+import {
+  DEMO_COMPANY,
+  DEMO_HOST,
+  PRODUCTION_HOST,
+  defaultReminderSettings,
+  emptyAppState,
+} from "./types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +38,24 @@ let tray: Tray | null = null;
 let isQuitting = false;
 let normalBounds: Electron.Rectangle | null = null;
 let cachedState: AppState = emptyAppState();
+
+// Modo demo (oculto): API https://demo-api.itmplatform.com y empresa fija. Tiene su propio
+// perfil de credenciales y estado, aislado del de producción. Se activa desde la propia app
+// (gesto oculto) o arrancando con el argumento --demo, que además lo bloquea.
+let demoMode = false;
+let demoLocked = false;
+
+function currentHost(): string {
+  return demoMode ? DEMO_HOST : PRODUCTION_HOST;
+}
+
+function currentMode(): AppMode {
+  return { demo: demoMode, locked: demoLocked, fixedCompany: demoMode ? DEMO_COMPANY : "" };
+}
+
+function appTitle(): string {
+  return demoMode ? "ITM Platform Timesheet (DEMO)" : "ITM Platform Timesheet";
+}
 let reminderTimer: ReturnType<typeof setInterval> | null = null;
 let reminderSettings: ReminderSettings = defaultReminderSettings();
 // Último aviso (o inicio de seguimiento) de "¿sigues trabajando?" por temporizador activo; key: workItemId.
@@ -129,7 +154,6 @@ function createTray() {
   // El PNG original es de 1024 px: fuera de Windows hay que reducirlo al tamaño de la bandeja.
   if (process.platform !== "win32" && !icon.isEmpty()) icon = icon.resize({ width: 16, height: 16 });
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
-  tray.setToolTip("ITM Platform Timesheet");
   updateTrayMenu();
   tray.on("double-click", () => {
     mainWindow?.show();
@@ -138,7 +162,7 @@ function createTray() {
 
 function updateTrayMenu(statusLabel?: string) {
   if (!tray) return;
-  tray.setToolTip(statusLabel ? `ITM Platform Timesheet — ${statusLabel}` : "ITM Platform Timesheet");
+  tray.setToolTip(statusLabel ? `${appTitle()} — ${statusLabel}` : appTitle());
   const menu = Menu.buildFromTemplate([
     { label: "Mostrar", click: () => mainWindow?.show() },
     { type: "separator" },
@@ -281,6 +305,9 @@ app.on("before-quit", () => {
 
 app.whenReady().then(async () => {
   app.setAppUserModelId("tech.actualsolutions.itmplatformtimesheet");
+  demoLocked = process.argv.includes("--demo");
+  demoMode = demoLocked || (await store.loadDemoFlag());
+  store.setProfile(demoMode);
   createWindow();
   createTray();
   cachedState = await store.loadAppState();
@@ -312,8 +339,10 @@ function requireSession() {
 }
 
 ipcMain.handle("itm:login", async (_e, creds: Credentials) => {
-  const res = await itm.login(creds.company, creds.apiKey);
-  await store.saveCredentials(creds);
+  // En modo demo la empresa es fija, venga lo que venga del formulario.
+  const company = demoMode ? DEMO_COMPANY : creds.company;
+  const res = await itm.login(currentHost(), company, creds.apiKey);
+  await store.saveCredentials({ company, apiKey: creds.apiKey });
   await store.saveSession({ token: res.Token, userId: res.UserID });
   return res;
 });
@@ -337,12 +366,19 @@ ipcMain.handle(
     const session = await requireSession();
     if (!creds || !session) throw new Error("No hay una sesión iniciada.");
     try {
-      return await itm.getTimesheet(creds.company, session.token, args.startDate, args.endDate);
+      return await itm.getTimesheet(
+        currentHost(),
+        creds.company,
+        session.token,
+        args.startDate,
+        args.endDate
+      );
     } catch (err) {
       if (err instanceof itm.ItmApiError && err.status === 401) {
-        const relogged = await itm.login(creds.company, creds.apiKey);
+        const relogged = await itm.login(currentHost(), creds.company, creds.apiKey);
         await store.saveSession({ token: relogged.Token, userId: relogged.UserID });
         return await itm.getTimesheet(
+          currentHost(),
           creds.company,
           relogged.Token,
           args.startDate,
@@ -361,17 +397,32 @@ ipcMain.handle(
     const session = await requireSession();
     if (!creds || !session) throw new Error("No hay una sesión iniciada.");
     try {
-      return await itm.submitTimeEntries(creds.company, session.token, payload);
+      return await itm.submitTimeEntries(currentHost(), creds.company, session.token, payload);
     } catch (err) {
       if (err instanceof itm.ItmApiError && err.status === 401) {
-        const relogged = await itm.login(creds.company, creds.apiKey);
+        const relogged = await itm.login(currentHost(), creds.company, creds.apiKey);
         await store.saveSession({ token: relogged.Token, userId: relogged.UserID });
-        return await itm.submitTimeEntries(creds.company, relogged.Token, payload);
+        return await itm.submitTimeEntries(currentHost(), creds.company, relogged.Token, payload);
       }
       throw err;
     }
   }
 );
+
+ipcMain.handle("mode:get", async (): Promise<AppMode> => currentMode());
+
+ipcMain.handle("mode:set", async (_e, demo: boolean): Promise<{ ok: boolean }> => {
+  // Con --demo el modo está bloqueado, y con un temporizador en marcha no se cambia de entorno.
+  if (demoLocked || hasRunningTimer()) return { ok: false };
+  demoMode = demo === true;
+  store.setProfile(demoMode);
+  await store.saveDemoFlag(demoMode);
+  cachedState = await store.loadAppState();
+  lastActiveCheckAt.clear();
+  syncActiveCheckTracking();
+  updateTrayMenu();
+  return { ok: true };
+});
 
 ipcMain.handle("state:load", async (): Promise<AppState> => {
   return store.loadAppState();

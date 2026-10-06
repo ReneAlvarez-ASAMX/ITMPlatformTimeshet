@@ -16,6 +16,7 @@
   --success-hover: #3a7f19;
   --warning-bg: #fff4dc;
   --warning-text: #8a5a00;
+  --demo: #d6336c;
   font-family: Lato, Arial, Helvetica, "Segoe UI", sans-serif;
 }
 
@@ -196,6 +197,31 @@ button:disabled {
   gap: 12px;
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+.brand-tap {
+  display: inline-flex;
+  user-select: none;
+}
+
+.brand-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-badge {
+  background: var(--demo);
+  color: white;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.app-header.demo {
+  border-bottom-color: var(--demo);
 }
 
 .brand-text {

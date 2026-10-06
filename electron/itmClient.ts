@@ -5,8 +5,6 @@ import type {
   TimesheetResponse,
 } from "./types";
 
-const V1_HOST = "https://api.itmplatform.com";
-
 class ItmApiError extends Error {
   status?: number;
   constructor(message: string, status?: number) {
@@ -16,8 +14,8 @@ class ItmApiError extends Error {
   }
 }
 
-function baseUrl(company: string): string {
-  return `${V1_HOST}/${encodeURIComponent(company)}`;
+function baseUrl(host: string, company: string): string {
+  return `${host}/${encodeURIComponent(company)}`;
 }
 
 async function parseJsonOrThrow(res: Response, context: string): Promise<any> {
@@ -39,8 +37,12 @@ async function parseJsonOrThrow(res: Response, context: string): Promise<any> {
   return data;
 }
 
-export async function login(company: string, apiKey: string): Promise<LoginResponse> {
-  const url = `${baseUrl(company)}/login/${encodeURIComponent(apiKey)}`;
+export async function login(
+  host: string,
+  company: string,
+  apiKey: string
+): Promise<LoginResponse> {
+  const url = `${baseUrl(host, company)}/login/${encodeURIComponent(apiKey)}`;
   const res = await fetch(url, {
     method: "GET",
     headers: { Accept: "application/json" },
@@ -55,12 +57,13 @@ export async function login(company: string, apiKey: string): Promise<LoginRespo
 }
 
 export async function getTimesheet(
+  host: string,
   company: string,
   token: string,
   startDate: string,
   endDate: string
 ): Promise<TimesheetResponse> {
-  const url = new URL(`${baseUrl(company)}/timehours/`);
+  const url = new URL(`${baseUrl(host, company)}/timehours/`);
   url.searchParams.set("StartDate", startDate);
   url.searchParams.set("EndDate", endDate);
   const res = await fetch(url.toString(), {
@@ -72,11 +75,12 @@ export async function getTimesheet(
 }
 
 export async function submitTimeEntries(
+  host: string,
   company: string,
   token: string,
   payload: SubmitTimeEntriesRequest
 ): Promise<SubmitTimeEntriesResponse> {
-  const url = `${baseUrl(company)}/timehours/`;
+  const url = `${baseUrl(host, company)}/timehours/`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
