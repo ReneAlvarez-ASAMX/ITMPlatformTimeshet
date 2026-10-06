@@ -173,6 +173,11 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
     .filter((t) => t.date === selectedDate)
     .reduce((sum, t) => sum + timers.getElapsedSeconds(t.workItemId), 0);
 
+  // Tiempo sin enviar de otras fechas (cuenta en la barra inferior, no en el % del día).
+  const pendingOtherDaysSeconds = Object.values(timers.timers)
+    .filter((t) => t.date !== selectedDate)
+    .reduce((sum, t) => sum + timers.getElapsedSeconds(t.workItemId), 0);
+
   async function handleConfirmSync() {
     const result = await submit(pending, (ids) => timers.markSynced(ids));
     if (result.successCount > 0) refetch();
@@ -245,6 +250,7 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
             targetSeconds={workdaySeconds(selectedDate)}
             reportedSeconds={reportedDaySeconds}
             pendingSeconds={pendingDaySeconds}
+            otherDaysSeconds={pendingOtherDaysSeconds}
           />
         </div>
         <button

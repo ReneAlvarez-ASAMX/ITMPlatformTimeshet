@@ -388,6 +388,7 @@ button:disabled {
   flex-direction: column;
   gap: 4px;
   min-width: 250px;
+  max-width: 290px;
 }
 
 .day-progress {
@@ -448,6 +449,10 @@ button:disabled {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+}
+
+.dot.other {
+  background: #9aa7b8;
 }
 
 .dot {

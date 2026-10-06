@@ -134,6 +134,9 @@ const es = {
   "day.inItm": "En ITM {time}",
   "day.unsent": "Sin enviar {time}",
   "day.workday": "Jornada {time}",
+  "day.otherDays": "Otros días {time}",
+  "day.otherDaysHint":
+    "Tiempo sin enviar de otras fechas. No cuenta en el porcentaje de este día, pero sí en el total de la barra inferior.",
 
   // Recordatorios
   "reminders.title": "Recordatorios",
@@ -300,6 +303,9 @@ const en: Dictionary = {
   "day.inItm": "In ITM {time}",
   "day.unsent": "Unsent {time}",
   "day.workday": "Workday {time}",
+  "day.otherDays": "Other days {time}",
+  "day.otherDaysHint":
+    "Unsent time from other dates. It does not count towards this day's percentage, but it is included in the total of the bottom bar.",
 
   "reminders.title": "Reminders",
   "reminders.disabled": "Disabled",
@@ -453,6 +459,9 @@ const pt: Dictionary = {
   "day.inItm": "No ITM {time}",
   "day.unsent": "Não enviadas {time}",
   "day.workday": "Jornada {time}",
+  "day.otherDays": "Outros dias {time}",
+  "day.otherDaysHint":
+    "Tempo não enviado de outras datas. Não conta na porcentagem deste dia, mas está incluído no total da barra inferior.",
 
   "reminders.title": "Lembretes",
   "reminders.disabled": "Desativados",
