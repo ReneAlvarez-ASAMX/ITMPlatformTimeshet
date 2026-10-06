@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { UpdateStatus } from "../../electron/types";
+import { Icon } from "./Icon";
 
 export function UpdateControl() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
@@ -14,7 +15,7 @@ export function UpdateControl() {
 
   const updateReady = status.state === "available" || status.state === "downloaded";
   const label = updateReady
-    ? `⬆ Actualizar a v${status.version}`
+    ? `Actualizar a v${status.version}`
     : status.state === "downloading"
     ? `Descargando… ${status.percent ?? 0}%`
     : `v${status.currentVersion}`;
@@ -22,9 +23,10 @@ export function UpdateControl() {
   return (
     <div className="reminder-control">
       <button
-        className={`btn-link ${updateReady ? "update-available" : ""}`}
+        className={`header-btn ${updateReady ? "update-available" : ""}`}
         onClick={() => setOpen((v) => !v)}
       >
+        {updateReady && <Icon name="arrow-up-circle" />}
         {label}
       </button>
       {open && (

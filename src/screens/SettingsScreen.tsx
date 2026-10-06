@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BrandMark } from "../components/Icon";
 
 interface Props {
   onConnected: (account: { company: string; userId: string }) => void;
@@ -28,6 +29,10 @@ export function SettingsScreen({ onConnected }: Props) {
   return (
     <div className="settings-screen">
       <div className="settings-card">
+        <div className="settings-brand">
+          <BrandMark size={44} />
+          <span className="settings-brand-sub">TIMESHEET</span>
+        </div>
         <h1>Conectar con ITM Platform</h1>
         <p className="hint">
           Introduce el identificador de tu empresa (el que usas para acceder a ITM Platform)

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { WorkItem } from "../../electron/types";
 import type { TaskRef } from "../hooks/useTimers";
+import { Icon } from "./Icon";
 import {
   formatClock,
   formatDayShort,
@@ -142,7 +143,7 @@ export function TaskRow({
             title={isFavorite ? "Quitar de destacadas" : "Marcar como destacada"}
             aria-pressed={isFavorite}
           >
-            {isFavorite ? "★" : "☆"}
+            <Icon name="star" size={16} filled={isFavorite} />
           </button>
           <div className="task-name" title={workItem.WorkItemNo}>
             {workItem.Name}
@@ -213,7 +214,8 @@ export function TaskRow({
           </form>
         ) : (
           <button className="btn-manual-toggle" onClick={() => setShowManual(true)}>
-            + Añadir tiempo manual
+            <Icon name="plus" size={13} />
+            Añadir tiempo manual
           </button>
         )}
       </div>
@@ -238,6 +240,7 @@ export function TaskRow({
         )}
         {!isRunning && elapsedSeconds > 0 && !editingAmount && (
           <button className="btn-edit-amount" onClick={openAmountEditor}>
+            <Icon name="edit" size={12} />
             Editar
           </button>
         )}
@@ -247,6 +250,7 @@ export function TaskRow({
             onClick={handleToggle}
             disabled={!isRunning && !canTrackTime}
           >
+            <Icon name={isRunning ? "pause" : "play"} size={13} filled />
             {isRunning ? "Pausar" : "Iniciar"}
           </button>
         )}

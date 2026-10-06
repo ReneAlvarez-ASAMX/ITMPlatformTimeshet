@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReminderSettings } from "../../electron/types";
+import { Icon } from "./Icon";
 
 export function ReminderSettingsControl() {
   const [settings, setSettings] = useState<ReminderSettings | null>(null);
@@ -41,16 +42,14 @@ export function ReminderSettingsControl() {
     setOpen(false);
   }
 
-  const label = !settings
-    ? "Recordatorios"
-    : settings.enabled || settings.activeCheckEnabled
-    ? "🔔 Recordatorios"
-    : "🔕 Desactivados";
+  const anyEnabled = !settings || settings.enabled || settings.activeCheckEnabled;
+  const label = anyEnabled ? "Recordatorios" : "Desactivados";
 
   return (
     <div className="reminder-control">
-      <button className="btn-link" onClick={openPanel}>
-        {label}
+      <button className="header-btn" onClick={openPanel} title="Recordatorios">
+        <Icon name={anyEnabled ? "bell" : "bell-off"} />
+        <span className="lbl">{label}</span>
       </button>
       {open && (
         <form className="reminder-panel" onSubmit={handleSave}>

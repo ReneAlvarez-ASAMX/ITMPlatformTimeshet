@@ -8,6 +8,7 @@ import { ReminderSettingsControl } from "../components/ReminderSettingsControl";
 import { AutoLaunchControl } from "../components/AutoLaunchControl";
 import { DailyFavoritesPrompt } from "../components/DailyFavoritesPrompt";
 import { UpdateControl } from "../components/UpdateControl";
+import { BrandMark, Icon } from "../components/Icon";
 import { SyncReviewPanel } from "../components/SyncReviewPanel";
 import { useTimesheet } from "../hooks/useTimesheet";
 import { useTimers } from "../hooks/useTimers";
@@ -161,26 +162,34 @@ export function TimesheetScreen({ account, onLogout }: Props) {
   return (
     <div className="timesheet-screen">
       <header className="app-header">
-        <div>
-          <h1>ITM Platform Timesheet</h1>
-          <span className="account-label">{account.company}</span>
+        <div className="brand">
+          <BrandMark />
+          <div className="brand-text">
+            <h1>ITM Platform</h1>
+            <span className="account-label">TIMESHEET · {account.company}</span>
+          </div>
         </div>
         <div className="header-actions">
-          <input
-            className="search-input"
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar tarea o proyecto…"
-          />
+          <div className="search-wrap">
+            <Icon name="search" size={14} />
+            <input
+              className="search-input"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar tarea o proyecto…"
+            />
+          </div>
           <ReminderSettingsControl />
           <AutoLaunchControl />
           <UpdateControl />
-          <button className="btn-link" onClick={() => setMini(true)}>
-            Modo mini
+          <button className="header-btn icon-only" onClick={() => setMini(true)} title="Modo mini">
+            <Icon name="minimize-2" />
+            <span className="lbl">Modo mini</span>
           </button>
-          <button className="btn-link" onClick={handleLogout}>
-            Cambiar cuenta
+          <button className="header-btn icon-only" onClick={handleLogout} title="Cambiar cuenta">
+            <Icon name="log-out" />
+            <span className="lbl">Cambiar cuenta</span>
           </button>
         </div>
       </header>
@@ -193,7 +202,7 @@ export function TimesheetScreen({ account, onLogout }: Props) {
           {isToday && <span className="today-badge">Hoy</span>}
         </div>
         <button className="btn-refresh" onClick={() => refetch()} disabled={loading}>
-          <span className={`refresh-icon ${loading ? "spinning" : ""}`}>↻</span>
+          <Icon name="refresh-cw" size={14} className={loading ? "spinning" : ""} />
           {loading ? "Actualizando…" : "Actualizar tareas"}
         </button>
       </div>
@@ -211,9 +220,11 @@ export function TimesheetScreen({ account, onLogout }: Props) {
             <div className="list-toolbar">
               <div className="list-toolbar-group">
                 <button className="btn-link" onClick={expandAll}>
+                  <Icon name="chevrons-down" size={14} />
                   Expandir todo
                 </button>
                 <button className="btn-link" onClick={collapseAll}>
+                  <Icon name="chevrons-up" size={14} />
                   Colapsar todo
                 </button>
               </div>
@@ -222,18 +233,21 @@ export function TimesheetScreen({ account, onLogout }: Props) {
                   className={filterMode === "all" ? "active" : ""}
                   onClick={() => setFilterMode("all")}
                 >
+                  <Icon name="list" size={14} />
                   Todas las tareas
                 </button>
                 <button
                   className={filterMode === "favorites" ? "active" : ""}
                   onClick={() => setFilterMode("favorites")}
                 >
+                  <Icon name="star" size={14} />
                   Destacadas
                 </button>
                 <button
                   className={filterMode === "active" ? "active" : ""}
                   onClick={() => setFilterMode("active")}
                 >
+                  <Icon name="clock" size={14} />
                   Con temporizador activo
                 </button>
               </div>

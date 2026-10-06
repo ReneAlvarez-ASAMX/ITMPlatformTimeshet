@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { TimeReportGroup } from "../../electron/types";
+import { Icon } from "./Icon";
 
 interface Props {
   projects: TimeReportGroup[];
@@ -76,7 +77,7 @@ export function DailyFavoritesPrompt({ projects, favoriteCount, onSave, onClose 
                       title={active ? "Quitar de destacadas" : "Marcar como destacada"}
                       aria-pressed={active}
                     >
-                      {active ? "★" : "☆"}
+                      <Icon name="star" size={16} filled={active} />
                     </button>
                     <span>{wi.Name}</span>
                   </div>
