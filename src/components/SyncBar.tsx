@@ -1,5 +1,6 @@
 import { formatShort } from "../timeFormat";
 import type { PendingItem } from "../hooks/useSync";
+import { useI18n } from "../i18n";
 import { Icon } from "./Icon";
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function SyncBar({ pending, syncing, lastError, itemErrors, onReview }: Props) {
+  const { t } = useI18n();
   const totalSeconds = pending.reduce((sum, p) => sum + p.seconds, 0);
   const hasErrors = Object.keys(itemErrors).length > 0;
 
@@ -19,19 +21,21 @@ export function SyncBar({ pending, syncing, lastError, itemErrors, onReview }: P
       <div className="sync-info">
         {pending.length > 0 ? (
           <span>
-            {pending.length} tarea{pending.length !== 1 ? "s" : ""} con {formatShort(totalSeconds)} sin
-            enviar
+            {t(pending.length === 1 ? "sync.pendingOne" : "sync.pendingMany", {
+              count: pending.length,
+              time: formatShort(totalSeconds),
+            })}
           </span>
         ) : (
           <span className="sync-info-empty">
             <Icon name="check-circle" size={15} />
-            Todo sincronizado
+            {t("sync.allSynced")}
           </span>
         )}
         {lastError && <div className="error-box">{lastError}</div>}
         {hasErrors && (
           <div className="error-box">
-            Algunas tareas no se pudieron enviar: {Object.values(itemErrors).join(" · ")}
+            {t("sync.itemErrors", { errors: Object.values(itemErrors).join(" · ") })}
           </div>
         )}
       </div>
@@ -41,7 +45,7 @@ export function SyncBar({ pending, syncing, lastError, itemErrors, onReview }: P
         onClick={onReview}
       >
         <Icon name="send" size={14} />
-        Revisar y enviar
+        {t("sync.review")}
       </button>
     </div>
   );

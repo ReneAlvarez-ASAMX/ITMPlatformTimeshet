@@ -11,6 +11,7 @@ import { UpdateControl } from "../components/UpdateControl";
 import { BrandMark, Icon } from "../components/Icon";
 import { DayProgress } from "../components/DayProgress";
 import { PoweredBy } from "../components/PoweredBy";
+import { useI18n } from "../i18n";
 import { useSecretTaps } from "../hooks/useSecretTaps";
 import { switchMode } from "../modeSwitch";
 import type { AppMode } from "../../electron/types";
@@ -51,6 +52,7 @@ function capitalize(text: string): string {
 let dailyFavoritesPromptHandled = false;
 
 export function TimesheetScreen({ account, mode, onLogout }: Props) {
+  const { t, locale, refreshLanguage } = useI18n();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => todayStr());
   const [search, setSearch] = useState("");
@@ -214,19 +216,19 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar tarea o proyecto…"
+              placeholder={t("header.search")}
             />
           </div>
           <ReminderSettingsControl />
           <AutoLaunchControl />
           <UpdateControl />
-          <button className="header-btn icon-only" onClick={() => setMini(true)} title="Modo mini">
+          <button className="header-btn icon-only" onClick={() => setMini(true)} title={t("header.miniMode")}>
             <Icon name="minimize-2" />
-            <span className="lbl">Modo mini</span>
+            <span className="lbl">{t("header.miniMode")}</span>
           </button>
-          <button className="header-btn icon-only" onClick={handleLogout} title="Cambiar cuenta">
+          <button className="header-btn icon-only" onClick={handleLogout} title={t("header.switchAccount")}>
             <Icon name="log-out" />
-            <span className="lbl">Cambiar cuenta</span>
+            <span className="lbl">{t("header.switchAccount")}</span>
           </button>
         </div>
       </header>
@@ -236,8 +238,8 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
         <DaySelector weekStart={weekStart} selectedDate={selectedDate} onSelect={setSelectedDate} />
         <div className="day-summary">
           <div className="day-heading">
-            {capitalize(formatDayLabel(selectedDate))}
-            {isToday && <span className="today-badge">Hoy</span>}
+            {capitalize(formatDayLabel(selectedDate, locale))}
+            {isToday && <span className="today-badge">{t("header.today")}</span>}
           </div>
           <DayProgress
             targetSeconds={workdaySeconds(selectedDate)}
@@ -245,18 +247,26 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
             pendingSeconds={pendingDaySeconds}
           />
         </div>
-        <button className="btn-refresh" onClick={() => refetch()} disabled={loading}>
+        <button
+          className="btn-refresh"
+          onClick={() => {
+            refetch();
+            // Aprovecha para releer el idioma de "Mi perfil" por si se ha cambiado en ITM Platform.
+            refreshLanguage();
+          }}
+          disabled={loading}
+        >
           <Icon name="refresh-cw" size={14} className={loading ? "spinning" : ""} />
-          {loading ? "Actualizando…" : "Actualizar tareas"}
+          {loading ? t("header.refreshing") : t("header.refresh")}
         </button>
       </div>
 
       <main className="app-main">
-        {loading && <div className="loading-state">Cargando tareas…</div>}
+        {loading && <div className="loading-state">{t("list.loading")}</div>}
         {error && (
           <div className="error-box">
             {error}
-            <button onClick={() => refetch()}>Reintentar</button>
+            <button onClick={() => refetch()}>{t("common.retry")}</button>
           </div>
         )}
         {!loading && !error && data && (
@@ -265,11 +275,11 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
               <div className="list-toolbar-group">
                 <button className="btn-link" onClick={expandAll}>
                   <Icon name="chevrons-down" size={14} />
-                  Expandir todo
+                  {t("list.expandAll")}
                 </button>
                 <button className="btn-link" onClick={collapseAll}>
                   <Icon name="chevrons-up" size={14} />
-                  Colapsar todo
+                  {t("list.collapseAll")}
                 </button>
               </div>
               <div className="filter-toggle">
@@ -278,21 +288,21 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
                   onClick={() => setFilterMode("all")}
                 >
                   <Icon name="list" size={14} />
-                  Todas las tareas
+                  {t("filter.all")}
                 </button>
                 <button
                   className={filterMode === "favorites" ? "active" : ""}
                   onClick={() => setFilterMode("favorites")}
                 >
                   <Icon name="star" size={14} />
-                  Destacadas
+                  {t("filter.favorites")}
                 </button>
                 <button
                   className={filterMode === "active" ? "active" : ""}
                   onClick={() => setFilterMode("active")}
                 >
                   <Icon name="clock" size={14} />
-                  Con temporizador activo
+                  {t("filter.active")}
                 </button>
               </div>
             </div>

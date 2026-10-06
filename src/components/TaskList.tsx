@@ -1,6 +1,7 @@
 import type { TimeReportGroup } from "../../electron/types";
 import type { TaskRef, useTimers } from "../hooks/useTimers";
 import { formatShort, hhmmToSeconds } from "../timeFormat";
+import { useI18n } from "../i18n";
 import { Icon } from "./Icon";
 import { TaskRow } from "./TaskRow";
 
@@ -36,8 +37,9 @@ export function TaskList({
   selectedDate,
   isToday,
 }: Props) {
+  const { t } = useI18n();
   if (projects.length === 0) {
-    return <div className="empty-state">No se encontraron tareas para este periodo.</div>;
+    return <div className="empty-state">{t("list.empty")}</div>;
   }
 
   return (
@@ -55,8 +57,12 @@ export function TaskList({
               <Icon name="chevron-down" size={14} className={`chevron ${isCollapsed ? "collapsed" : ""}`} />
               {project.Name}
               <span className="project-total">
-                {formatShort(reportedSeconds)}
-                {pendingSeconds > 0 && ` + ${formatShort(pendingSeconds)} sin enviar`}
+                {pendingSeconds > 0
+                  ? t("list.projectPending", {
+                      reported: formatShort(reportedSeconds),
+                      pending: formatShort(pendingSeconds),
+                    })
+                  : formatShort(reportedSeconds)}
               </span>
               <span className="project-count">{project.WorkItems.length}</span>
             </button>

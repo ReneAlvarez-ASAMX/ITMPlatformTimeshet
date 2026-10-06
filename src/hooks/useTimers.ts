@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppState, TimerRecord } from "../../electron/types";
 import { emptyAppState } from "../../electron/types";
+import { useI18n } from "../i18n";
 import { formatShort, todayStr } from "../timeFormat";
 
 export interface TaskRef {
@@ -11,6 +12,7 @@ export interface TaskRef {
 }
 
 export function useTimers() {
+  const { t } = useI18n();
   const [state, setState] = useState<AppState>(emptyAppState());
   const [loaded, setLoaded] = useState(false);
   const [, forceTick] = useState(0);
@@ -234,10 +236,10 @@ export function useTimers() {
       .filter((t) => t.date === todayStr())
       .reduce((sum, t) => sum + getElapsedSeconds(t.workItemId), 0);
     window.itm.updateTrayStatus(
-      `${running.length} en curso · ${formatShort(totalToday)} hoy`
+      t("tray.status", { count: running.length, time: formatShort(totalToday) })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
+  }, [state, t]);
 
   return {
     timers: state.timers,

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { Language } from "./i18n";
 import type {
   AppMode,
   AppState,
@@ -28,6 +29,11 @@ const api = {
     payload: SubmitTimeEntriesRequest
   ): Promise<SubmitTimeEntriesResponse> =>
     ipcRenderer.invoke("itm:submitTimeEntries", payload),
+
+  getLanguage: (): Promise<Language> => ipcRenderer.invoke("language:get"),
+
+  /** Vuelve a leer el idioma de "Mi perfil" en ITM Platform y devuelve el que debe usar la app. */
+  refreshLanguage: (): Promise<Language> => ipcRenderer.invoke("language:refresh"),
 
   getMode: (): Promise<AppMode> => ipcRenderer.invoke("mode:get"),
 

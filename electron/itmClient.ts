@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import type {
   LoginResponse,
   SubmitTimeEntriesRequest,
@@ -25,7 +26,7 @@ async function parseJsonOrThrow(res: Response, context: string): Promise<any> {
     data = text ? JSON.parse(text) : null;
   } catch {
     throw new ItmApiError(
-      `Respuesta inesperada de ITM Platform (${context}): ${text.slice(0, 200)}`,
+      t("api.unexpected", { context, detail: text.slice(0, 200) }),
       res.status
     );
   }
@@ -47,11 +48,9 @@ export async function login(
     method: "GET",
     headers: { Accept: "application/json" },
   });
-  const data = await parseJsonOrThrow(res, "Login");
+  const data = await parseJsonOrThrow(res, t("api.ctx.login"));
   if (!data?.Token) {
-    throw new ItmApiError(
-      "No se recibió un token de sesión válido. Verifica el company y la API Key."
-    );
+    throw new ItmApiError(t("api.noToken"));
   }
   return data as LoginResponse;
 }
@@ -70,7 +69,7 @@ export async function getTimesheet(
     method: "GET",
     headers: { Accept: "application/json", Token: token },
   });
-  const data = await parseJsonOrThrow(res, "Obtener timesheet");
+  const data = await parseJsonOrThrow(res, t("api.ctx.timesheet"));
   return data as TimesheetResponse;
 }
 
@@ -90,8 +89,27 @@ export async function submitTimeEntries(
     },
     body: JSON.stringify(payload),
   });
-  const data = await parseJsonOrThrow(res, "Enviar horas");
+  const data = await parseJsonOrThrow(res, t("api.ctx.submit"));
   return data as SubmitTimeEntriesResponse;
+}
+
+/**
+ * Idioma que el usuario tiene definido en "Mi perfil" de ITM Platform (campo DefaultLanguage de su
+ * ficha de usuario en la API v2: "Spanish", "English" o "Portuguese"). Devuelve null si no viene.
+ */
+export async function getUserLanguage(
+  host: string,
+  company: string,
+  token: string,
+  userId: string
+): Promise<string | null> {
+  const url = `${host}/v2/${encodeURIComponent(company)}/users/${encodeURIComponent(userId)}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json", Token: token },
+  });
+  const data = await parseJsonOrThrow(res, t("api.ctx.language"));
+  return typeof data?.DefaultLanguage === "string" ? data.DefaultLanguage : null;
 }
 
 export { ItmApiError };

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { WorkItem } from "../../electron/types";
 import type { TaskRef } from "../hooks/useTimers";
+import { useI18n } from "../i18n";
+import type { MessageKey } from "../../electron/i18n";
 import { Icon } from "./Icon";
 import {
   formatClock,
@@ -51,6 +53,7 @@ export function TaskRow({
   onSetComment,
   onAdjustStart,
 }: Props) {
+  const { t, locale } = useI18n();
   const [warning, setWarning] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [manualValue, setManualValue] = useState("");
@@ -63,7 +66,7 @@ export function TaskRow({
   const dayEntry = workItem.TimeEntries.find((t) => t.Date === selectedDate);
   const reportedSeconds = hhmmToSeconds(dayEntry?.ReportedHours);
   const canTrackTime = dayEntry?.TimeEntryAllowed !== false;
-  const dayLabel = isToday ? "Hoy" : formatDayShort(selectedDate);
+  const dayLabel = isToday ? t("header.today") : formatDayShort(selectedDate, locale);
   const taskRef: TaskRef = {
     workItemId: workItem.WorkItemId,
     entityId,
@@ -77,7 +80,7 @@ export function TaskRow({
       return;
     }
     const result = onStart(taskRef, selectedDate);
-    setWarning(result.ok ? null : staleMessage(result.reason));
+    setWarning(result.ok ? null : staleMessage(t, result.reason));
   }
 
   function handleManualSubmit(e: React.FormEvent) {
@@ -90,7 +93,7 @@ export function TaskRow({
       setShowManual(false);
       setWarning(null);
     } else {
-      setWarning(staleMessage(result.reason));
+      setWarning(staleMessage(t, result.reason));
     }
   }
 
@@ -111,7 +114,7 @@ export function TaskRow({
       setEditingAmount(false);
       setWarning(null);
     } else {
-      setWarning("No se pudo corregir el tiempo.");
+      setWarning(t("task.error.amount"));
     }
   }
 
@@ -129,7 +132,7 @@ export function TaskRow({
       setEditingStart(false);
       setWarning(null);
     } else {
-      setWarning("No se pudo ajustar la hora de inicio.");
+      setWarning(t("task.error.start"));
     }
   }
 
@@ -140,7 +143,7 @@ export function TaskRow({
           <button
             className={`btn-favorite ${isFavorite ? "active" : ""}`}
             onClick={() => onToggleFavorite(workItem.WorkItemId)}
-            title={isFavorite ? "Quitar de destacadas" : "Marcar como destacada"}
+            title={isFavorite ? t("task.favorite.remove") : t("task.favorite.add")}
             aria-pressed={isFavorite}
           >
             <Icon name="star" size={16} filled={isFavorite} />
@@ -150,19 +153,19 @@ export function TaskRow({
           </div>
         </div>
         <div className="task-meta">
-          {dayLabel}: {formatShort(reportedSeconds)} reportadas
-          {elapsedSeconds > 0 && ` · ${formatShort(elapsedSeconds)} sin enviar`}
+          {t("task.reported", { day: dayLabel, time: formatShort(reportedSeconds) })}
+          {elapsedSeconds > 0 && t("task.unsentSuffix", { time: formatShort(elapsedSeconds) })}
         </div>
         {warning && <div className="task-warning">{warning}</div>}
         {!canTrackTime && !isRunning && (
-          <div className="task-warning">Esta tarea no admite registro de horas este día.</div>
+          <div className="task-warning">{t("task.noTimeAllowed")}</div>
         )}
 
         {isRunning &&
           startedAt &&
           (editingStart ? (
             <form className="start-edit-form" onSubmit={handleStartSubmit}>
-              <span>Inicio:</span>
+              <span>{t("task.startLabel")}</span>
               <input
                 autoFocus
                 type="time"
@@ -170,14 +173,14 @@ export function TaskRow({
                 value={startValue}
                 onChange={(e) => setStartValue(e.target.value)}
               />
-              <button type="submit">OK</button>
+              <button type="submit">{t("common.ok")}</button>
               <button type="button" className="btn-link" onClick={() => setEditingStart(false)}>
-                Cancelar
+                {t("common.cancel")}
               </button>
             </form>
           ) : (
             <button className="btn-start-edit-toggle" onClick={openStartEditor}>
-              Iniciado a las {timeOfDay(startedAt)} · ajustar
+              {t("task.startedAt", { time: timeOfDay(startedAt) })}
             </button>
           ))}
 
@@ -187,7 +190,7 @@ export function TaskRow({
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
             onBlur={handleNoteBlur}
-            placeholder={dayEntry?.UserComments || "Nota (opcional)"}
+            placeholder={dayEntry?.UserComments || t("task.notePlaceholder")}
           />
         )}
 
@@ -198,9 +201,9 @@ export function TaskRow({
               className="manual-entry-input"
               value={manualValue}
               onChange={(e) => setManualValue(e.target.value)}
-              placeholder="h:mm"
+              placeholder={t("task.manualPlaceholder")}
             />
-            <button type="submit">Añadir</button>
+            <button type="submit">{t("task.manualAdd")}</button>
             <button
               type="button"
               className="btn-link"
@@ -209,13 +212,13 @@ export function TaskRow({
                 setManualValue("");
               }}
             >
-              Cancelar
+              {t("common.cancel")}
             </button>
           </form>
         ) : (
           <button className="btn-manual-toggle" onClick={() => setShowManual(true)}>
             <Icon name="plus" size={13} />
-            Añadir tiempo manual
+            {t("task.manualToggle")}
           </button>
         )}
       </div>
@@ -228,11 +231,11 @@ export function TaskRow({
               className="amount-edit-input"
               value={amountValue}
               onChange={(e) => setAmountValue(e.target.value)}
-              placeholder="h:mm"
+              placeholder={t("task.manualPlaceholder")}
             />
-            <button type="submit">OK</button>
+            <button type="submit">{t("common.ok")}</button>
             <button type="button" className="btn-link" onClick={() => setEditingAmount(false)}>
-              Cancelar
+              {t("common.cancel")}
             </button>
           </form>
         ) : (
@@ -241,7 +244,7 @@ export function TaskRow({
         {!isRunning && elapsedSeconds > 0 && !editingAmount && (
           <button className="btn-edit-amount" onClick={openAmountEditor}>
             <Icon name="edit" size={12} />
-            Editar
+            {t("task.edit")}
           </button>
         )}
         {isToday && (
@@ -251,7 +254,7 @@ export function TaskRow({
             disabled={!isRunning && !canTrackTime}
           >
             <Icon name={isRunning ? "pause" : "play"} size={13} filled />
-            {isRunning ? "Pausar" : "Iniciar"}
+            {isRunning ? t("task.pause") : t("task.start")}
           </button>
         )}
       </div>
@@ -259,9 +262,6 @@ export function TaskRow({
   );
 }
 
-function staleMessage(reason?: string): string {
-  if (reason === "stale-date") {
-    return "Tienes tiempo sin enviar de otro día en esta tarea. Envía esas horas antes de continuar.";
-  }
-  return "No se pudo registrar el tiempo.";
+function staleMessage(t: (key: MessageKey) => string, reason?: string): string {
+  return reason === "stale-date" ? t("task.error.stale") : t("task.error.generic");
 }

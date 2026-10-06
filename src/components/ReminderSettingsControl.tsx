@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ReminderSettings } from "../../electron/types";
+import { useI18n } from "../i18n";
 import { Icon } from "./Icon";
 
 export function ReminderSettingsControl() {
+  const { t } = useI18n();
   const [settings, setSettings] = useState<ReminderSettings | null>(null);
   const [open, setOpen] = useState(false);
   const [draftEnabled, setDraftEnabled] = useState(true);
@@ -43,11 +45,11 @@ export function ReminderSettingsControl() {
   }
 
   const anyEnabled = !settings || settings.enabled || settings.activeCheckEnabled;
-  const label = anyEnabled ? "Recordatorios" : "Desactivados";
+  const label = anyEnabled ? t("reminders.title") : t("reminders.disabled");
 
   return (
     <div className="reminder-control">
-      <button className="header-btn" onClick={openPanel} title="Recordatorios">
+      <button className="header-btn" onClick={openPanel} title={t("reminders.title")}>
         <Icon name={anyEnabled ? "bell" : "bell-off"} />
         <span className="lbl">{label}</span>
       </button>
@@ -59,10 +61,10 @@ export function ReminderSettingsControl() {
               checked={draftEnabled}
               onChange={(e) => setDraftEnabled(e.target.checked)}
             />
-            Recordarme si no hay ningún temporizador activo
+            {t("reminders.noTimer")}
           </label>
           <label className="reminder-interval">
-            Cada
+            {t("reminders.every")}
             <input
               type="number"
               min={1}
@@ -70,7 +72,7 @@ export function ReminderSettingsControl() {
               onChange={(e) => setDraftInterval(e.target.value)}
               disabled={!draftEnabled}
             />
-            minutos
+            {t("reminders.minutes")}
           </label>
           <label className="reminder-checkbox">
             <input
@@ -78,10 +80,10 @@ export function ReminderSettingsControl() {
               checked={draftActiveEnabled}
               onChange={(e) => setDraftActiveEnabled(e.target.checked)}
             />
-            Preguntarme si sigo trabajando mientras haya un temporizador activo
+            {t("reminders.stillWorking")}
           </label>
           <label className="reminder-interval">
-            Cada
+            {t("reminders.every")}
             <input
               type="number"
               min={1}
@@ -89,12 +91,12 @@ export function ReminderSettingsControl() {
               onChange={(e) => setDraftActiveInterval(e.target.value)}
               disabled={!draftActiveEnabled}
             />
-            minutos
+            {t("reminders.minutes")}
           </label>
           <div className="reminder-panel-actions">
-            <button type="submit">Guardar</button>
+            <button type="submit">{t("common.save")}</button>
             <button type="button" className="btn-link" onClick={() => setOpen(false)}>
-              Cancelar
+              {t("common.cancel")}
             </button>
           </div>
         </form>
