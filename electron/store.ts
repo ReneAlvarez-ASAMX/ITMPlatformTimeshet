@@ -8,16 +8,24 @@ function userDataDir(): string {
   return app.getPath("userData");
 }
 
+// Cada entorno (producción / demo) tiene sus propias credenciales, sesión y estado local,
+// para que el tiempo de un entorno nunca se envíe al otro. Producción conserva los nombres de siempre.
+let profileSuffix = "";
+
+export function setProfile(demo: boolean): void {
+  profileSuffix = demo ? "-demo" : "";
+}
+
 function credentialsPath(): string {
-  return path.join(userDataDir(), "credentials.json");
+  return path.join(userDataDir(), `credentials${profileSuffix}.json`);
 }
 
 function sessionPath(): string {
-  return path.join(userDataDir(), "session.json");
+  return path.join(userDataDir(), `session${profileSuffix}.json`);
 }
 
 function statePath(): string {
-  return path.join(userDataDir(), "state.json");
+  return path.join(userDataDir(), `state${profileSuffix}.json`);
 }
 
 function reminderPath(): string {
@@ -107,6 +115,19 @@ export async function loadAppState(): Promise<AppState> {
 
 export async function saveAppState(state: AppState): Promise<void> {
   await writeJson(statePath(), state);
+}
+
+function modePath(): string {
+  return path.join(userDataDir(), "mode.json");
+}
+
+export async function loadDemoFlag(): Promise<boolean> {
+  const data = await readJson<{ demo?: boolean }>(modePath());
+  return data?.demo === true;
+}
+
+export async function saveDemoFlag(demo: boolean): Promise<void> {
+  await writeJson(modePath(), { demo });
 }
 
 export async function loadReminderSettings(): Promise<ReminderSettings> {

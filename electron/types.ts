@@ -2,6 +2,19 @@
 // Los tipos de payloads de la API de ITM Platform respetan el PascalCase original
 // devuelto por el servidor para evitar errores de mapeo.
 
+// Entornos de ITM Platform. El modo demo usa una API y una empresa fijas.
+export const PRODUCTION_HOST = "https://api.itmplatform.com";
+export const DEMO_HOST = "https://demo-api.itmplatform.com";
+export const DEMO_COMPANY = "globalcorp360";
+
+export interface AppMode {
+  demo: boolean;
+  /** true si el modo viene impuesto por el argumento de arranque --demo y no se puede cambiar. */
+  locked: boolean;
+  /** Empresa fija del modo demo (vacía en producción). */
+  fixedCompany: string;
+}
+
 export interface Credentials {
   company: string;
   apiKey: string;
@@ -139,6 +152,24 @@ export const defaultReminderSettings = (): ReminderSettings => ({
   activeCheckEnabled: true,
   activeCheckIntervalMinutes: 15,
 });
+
+export type UpdateState =
+  | "unsupported" // app sin empaquetar o plataforma sin actualización automática
+  | "idle"
+  | "checking"
+  | "not-available"
+  | "available"
+  | "downloading"
+  | "downloaded"
+  | "error";
+
+export interface UpdateStatus {
+  state: UpdateState;
+  currentVersion: string;
+  version?: string; // versión nueva detectada
+  percent?: number; // progreso de descarga, 0–100
+  error?: string;
+}
 
 export interface AutoLaunchSettings {
   enabled: boolean;

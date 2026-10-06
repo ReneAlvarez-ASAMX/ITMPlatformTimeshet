@@ -1,6 +1,7 @@
 import type { TimeReportGroup } from "../../electron/types";
 import type { TaskRef, useTimers } from "../hooks/useTimers";
 import { formatShort, hhmmToSeconds } from "../timeFormat";
+import { Icon } from "./Icon";
 import { TaskRow } from "./TaskRow";
 
 interface Props {
@@ -51,7 +52,7 @@ export function TaskList({
               onClick={() => onToggleProject(project.EntityId)}
               aria-expanded={!isCollapsed}
             >
-              <span className={`chevron ${isCollapsed ? "collapsed" : ""}`}>▾</span>
+              <Icon name="chevron-down" size={14} className={`chevron ${isCollapsed ? "collapsed" : ""}`} />
               {project.Name}
               <span className="project-total">
                 {formatShort(reportedSeconds)}

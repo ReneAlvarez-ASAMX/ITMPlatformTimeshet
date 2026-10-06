@@ -3,14 +3,22 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as itm from "./itmClient";
 import * as store from "./store";
+import * as updater from "./updater";
 import type {
+  AppMode,
   AppState,
   AutoLaunchSettings,
   Credentials,
   ReminderSettings,
   SubmitTimeEntriesRequest,
 } from "./types";
-import { defaultReminderSettings, emptyAppState } from "./types";
+import {
+  DEMO_COMPANY,
+  DEMO_HOST,
+  PRODUCTION_HOST,
+  defaultReminderSettings,
+  emptyAppState,
+} from "./types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,7 +26,10 @@ process.env.APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 
-const NORMAL_SIZE = { width: 1100, height: 760 };
+// Único sitio externo que la app puede abrir desde un enlace (pie "Desarrollado por Actual Solutions").
+const EXTERNAL_LINK_PREFIX = "https://actualsolutions.tech/";
+
+const NORMAL_SIZE ={ width: 1100, height: 760 };
 const NORMAL_MIN_SIZE = { width: 820, height: 560 };
 const MINI_SIZE = { width: 300, height: 220 };
 
@@ -27,6 +38,24 @@ let tray: Tray | null = null;
 let isQuitting = false;
 let normalBounds: Electron.Rectangle | null = null;
 let cachedState: AppState = emptyAppState();
+
+// Modo demo (oculto): API https://demo-api.itmplatform.com y empresa fija. Tiene su propio
+// perfil de credenciales y estado, aislado del de producción. Se activa desde la propia app
+// (gesto oculto) o arrancando con el argumento --demo, que además lo bloquea.
+let demoMode = false;
+let demoLocked = false;
+
+function currentHost(): string {
+  return demoMode ? DEMO_HOST : PRODUCTION_HOST;
+}
+
+function currentMode(): AppMode {
+  return { demo: demoMode, locked: demoLocked, fixedCompany: demoMode ? DEMO_COMPANY : "" };
+}
+
+function appTitle(): string {
+  return demoMode ? "ITM Platform Timesheet (DEMO)" : "ITM Platform Timesheet";
+}
 let reminderTimer: ReturnType<typeof setInterval> | null = null;
 let reminderSettings: ReminderSettings = defaultReminderSettings();
 // Último aviso (o inicio de seguimiento) de "¿sigues trabajando?" por temporizador activo; key: workItemId.
@@ -83,6 +112,21 @@ function createWindow() {
     mainWindow.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 
+  // Los enlaces nunca navegan dentro de la ventana de la app: los de Actual Solutions
+  // se abren en el navegador del sistema y cualquier otro se descarta.
+  const openIfAllowed = (url: string) => {
+    if (url.startsWith(EXTERNAL_LINK_PREFIX)) shell.openExternal(url);
+  };
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openIfAllowed(url);
+    return { action: "deny" };
+  });
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (url === mainWindow?.webContents.getURL()) return;
+    event.preventDefault();
+    openIfAllowed(url);
+  });
+
   mainWindow.once("ready-to-show", () => {
     if (!startedHidden) mainWindow?.show();
   });
@@ -110,7 +154,6 @@ function createTray() {
   // El PNG original es de 1024 px: fuera de Windows hay que reducirlo al tamaño de la bandeja.
   if (process.platform !== "win32" && !icon.isEmpty()) icon = icon.resize({ width: 16, height: 16 });
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
-  tray.setToolTip("ITM Platform Timesheet");
   updateTrayMenu();
   tray.on("double-click", () => {
     mainWindow?.show();
@@ -119,7 +162,7 @@ function createTray() {
 
 function updateTrayMenu(statusLabel?: string) {
   if (!tray) return;
-  tray.setToolTip(statusLabel ? `ITM Platform Timesheet — ${statusLabel}` : "ITM Platform Timesheet");
+  tray.setToolTip(statusLabel ? `${appTitle()} — ${statusLabel}` : appTitle());
   const menu = Menu.buildFromTemplate([
     { label: "Mostrar", click: () => mainWindow?.show() },
     { type: "separator" },
@@ -163,7 +206,7 @@ function hasRunningTimer(): boolean {
   return Object.values(cachedState.timers).some((t) => t.running);
 }
 
-function notify(title: string, body: string) {
+function notify(title: string, body: string, beep = true) {
   if (Notification.isSupported()) {
     const notification = new Notification({
       title,
@@ -177,7 +220,7 @@ function notify(title: string, body: string) {
     });
     notification.show();
   }
-  shell.beep();
+  if (beep) shell.beep();
 }
 
 function fireReminder() {
@@ -262,11 +305,26 @@ app.on("before-quit", () => {
 
 app.whenReady().then(async () => {
   app.setAppUserModelId("tech.actualsolutions.itmplatformtimesheet");
+  demoLocked = process.argv.includes("--demo");
+  demoMode = demoLocked || (await store.loadDemoFlag());
+  store.setProfile(demoMode);
   createWindow();
   createTray();
   cachedState = await store.loadAppState();
   restartReminderTimer(await store.loadReminderSettings());
   setInterval(checkActiveTimers, ACTIVE_CHECK_TICK_MS);
+  updater.initUpdater({
+    getWindow: () => mainWindow,
+    onNewVersion: (version) =>
+      notify(
+        "Nueva versión disponible",
+        `ITM Platform Timesheet ${version} está lista para descargar. Ábrela para actualizar.`,
+        false
+      ),
+    beforeInstall: () => {
+      isQuitting = true;
+    },
+  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -281,8 +339,10 @@ function requireSession() {
 }
 
 ipcMain.handle("itm:login", async (_e, creds: Credentials) => {
-  const res = await itm.login(creds.company, creds.apiKey);
-  await store.saveCredentials(creds);
+  // En modo demo la empresa es fija, venga lo que venga del formulario.
+  const company = demoMode ? DEMO_COMPANY : creds.company;
+  const res = await itm.login(currentHost(), company, creds.apiKey);
+  await store.saveCredentials({ company, apiKey: creds.apiKey });
   await store.saveSession({ token: res.Token, userId: res.UserID });
   return res;
 });
@@ -306,12 +366,19 @@ ipcMain.handle(
     const session = await requireSession();
     if (!creds || !session) throw new Error("No hay una sesión iniciada.");
     try {
-      return await itm.getTimesheet(creds.company, session.token, args.startDate, args.endDate);
+      return await itm.getTimesheet(
+        currentHost(),
+        creds.company,
+        session.token,
+        args.startDate,
+        args.endDate
+      );
     } catch (err) {
       if (err instanceof itm.ItmApiError && err.status === 401) {
-        const relogged = await itm.login(creds.company, creds.apiKey);
+        const relogged = await itm.login(currentHost(), creds.company, creds.apiKey);
         await store.saveSession({ token: relogged.Token, userId: relogged.UserID });
         return await itm.getTimesheet(
+          currentHost(),
           creds.company,
           relogged.Token,
           args.startDate,
@@ -330,17 +397,32 @@ ipcMain.handle(
     const session = await requireSession();
     if (!creds || !session) throw new Error("No hay una sesión iniciada.");
     try {
-      return await itm.submitTimeEntries(creds.company, session.token, payload);
+      return await itm.submitTimeEntries(currentHost(), creds.company, session.token, payload);
     } catch (err) {
       if (err instanceof itm.ItmApiError && err.status === 401) {
-        const relogged = await itm.login(creds.company, creds.apiKey);
+        const relogged = await itm.login(currentHost(), creds.company, creds.apiKey);
         await store.saveSession({ token: relogged.Token, userId: relogged.UserID });
-        return await itm.submitTimeEntries(creds.company, relogged.Token, payload);
+        return await itm.submitTimeEntries(currentHost(), creds.company, relogged.Token, payload);
       }
       throw err;
     }
   }
 );
+
+ipcMain.handle("mode:get", async (): Promise<AppMode> => currentMode());
+
+ipcMain.handle("mode:set", async (_e, demo: boolean): Promise<{ ok: boolean }> => {
+  // Con --demo el modo está bloqueado, y con un temporizador en marcha no se cambia de entorno.
+  if (demoLocked || hasRunningTimer()) return { ok: false };
+  demoMode = demo === true;
+  store.setProfile(demoMode);
+  await store.saveDemoFlag(demoMode);
+  cachedState = await store.loadAppState();
+  lastActiveCheckAt.clear();
+  syncActiveCheckTracking();
+  updateTrayMenu();
+  return { ok: true };
+});
 
 ipcMain.handle("state:load", async (): Promise<AppState> => {
   return store.loadAppState();
@@ -368,6 +450,11 @@ ipcMain.handle("reminder:setSettings", async (_e, settings: ReminderSettings) =>
   await store.saveReminderSettings(settings);
   restartReminderTimer(settings);
 });
+
+ipcMain.handle("updater:getStatus", async () => updater.getUpdateStatus());
+ipcMain.handle("updater:check", async () => updater.checkForUpdates(true));
+ipcMain.handle("updater:download", async () => updater.downloadUpdate());
+ipcMain.handle("updater:install", async () => updater.installUpdate());
 
 ipcMain.handle("autoLaunch:get", async (): Promise<AutoLaunchSettings> => {
   return getAutoLaunch();

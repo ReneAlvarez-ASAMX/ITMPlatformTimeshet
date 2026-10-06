@@ -7,14 +7,30 @@ import { MiniView } from "../components/MiniView";
 import { ReminderSettingsControl } from "../components/ReminderSettingsControl";
 import { AutoLaunchControl } from "../components/AutoLaunchControl";
 import { DailyFavoritesPrompt } from "../components/DailyFavoritesPrompt";
+import { UpdateControl } from "../components/UpdateControl";
+import { BrandMark, Icon } from "../components/Icon";
+import { DayProgress } from "../components/DayProgress";
+import { PoweredBy } from "../components/PoweredBy";
+import { useSecretTaps } from "../hooks/useSecretTaps";
+import { switchMode } from "../modeSwitch";
+import type { AppMode } from "../../electron/types";
 import { SyncReviewPanel } from "../components/SyncReviewPanel";
 import { useTimesheet } from "../hooks/useTimesheet";
 import { useTimers } from "../hooks/useTimers";
 import { collectPending, useSync } from "../hooks/useSync";
-import { startOfWeek, toIsoDate, addDays, formatDayLabel, todayStr } from "../timeFormat";
+import {
+  startOfWeek,
+  toIsoDate,
+  addDays,
+  formatDayLabel,
+  hhmmToSeconds,
+  todayStr,
+  workdaySeconds,
+} from "../timeFormat";
 
 interface Props {
   account: { company: string; userId: string };
+  mode: AppMode;
   onLogout: () => void;
 }
 
@@ -34,7 +50,7 @@ function capitalize(text: string): string {
 // mientras el proceso del renderer siga abierto, así que "Cambiar cuenta" o cerrar a la bandeja no la repiten.
 let dailyFavoritesPromptHandled = false;
 
-export function TimesheetScreen({ account, onLogout }: Props) {
+export function TimesheetScreen({ account, mode, onLogout }: Props) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => todayStr());
   const [search, setSearch] = useState("");
@@ -44,6 +60,7 @@ export function TimesheetScreen({ account, onLogout }: Props) {
   const [miniMode, setMiniModeState] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [dailyFavoritesOpen, setDailyFavoritesOpen] = useState(false);
+  const onSecretTap = useSecretTaps(() => switchMode(mode.demo));
   const startIso = toIsoDate(weekStart);
   const endIso = toIsoDate(addDays(weekStart, 6));
   const isToday = selectedDate === todayStr();
@@ -137,6 +154,23 @@ export function TimesheetScreen({ account, onLogout }: Props) {
     [timers.timers]
   );
 
+  // Horas del día seleccionado: ya reportadas en ITM Platform y las de temporizadores sin enviar.
+  const reportedDaySeconds = useMemo(() => {
+    if (!data) return 0;
+    let total = 0;
+    for (const project of data.TimeReports) {
+      for (const wi of project.WorkItems) {
+        const entry = wi.TimeEntries.find((t) => t.Date === selectedDate);
+        total += hhmmToSeconds(entry?.ReportedHours);
+      }
+    }
+    return total;
+  }, [data, selectedDate]);
+
+  const pendingDaySeconds = Object.values(timers.timers)
+    .filter((t) => t.date === selectedDate)
+    .reduce((sum, t) => sum + timers.getElapsedSeconds(t.workItemId), 0);
+
   async function handleConfirmSync() {
     const result = await submit(pending, (ids) => timers.markSynced(ids));
     if (result.successCount > 0) refetch();
@@ -159,26 +193,40 @@ export function TimesheetScreen({ account, onLogout }: Props) {
 
   return (
     <div className="timesheet-screen">
-      <header className="app-header">
-        <div>
-          <h1>ITM Platform Timesheet</h1>
-          <span className="account-label">{account.company}</span>
+      <header className={`app-header ${mode.demo ? "demo" : ""}`}>
+        <div className="brand">
+          <span className="brand-tap" onClick={onSecretTap}>
+            <BrandMark />
+          </span>
+          <div className="brand-text">
+            <div className="brand-title">
+              <h1>ITM Platform</h1>
+              {mode.demo && <span className="demo-badge">DEMO</span>}
+            </div>
+            <span className="account-label">TIMESHEET · {account.company}</span>
+          </div>
         </div>
         <div className="header-actions">
-          <input
-            className="search-input"
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar tarea o proyecto…"
-          />
+          <div className="search-wrap">
+            <Icon name="search" size={14} />
+            <input
+              className="search-input"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar tarea o proyecto…"
+            />
+          </div>
           <ReminderSettingsControl />
           <AutoLaunchControl />
-          <button className="btn-link" onClick={() => setMini(true)}>
-            Modo mini
+          <UpdateControl />
+          <button className="header-btn icon-only" onClick={() => setMini(true)} title="Modo mini">
+            <Icon name="minimize-2" />
+            <span className="lbl">Modo mini</span>
           </button>
-          <button className="btn-link" onClick={handleLogout}>
-            Cambiar cuenta
+          <button className="header-btn icon-only" onClick={handleLogout} title="Cambiar cuenta">
+            <Icon name="log-out" />
+            <span className="lbl">Cambiar cuenta</span>
           </button>
         </div>
       </header>
@@ -186,12 +234,19 @@ export function TimesheetScreen({ account, onLogout }: Props) {
       <div className="day-bar">
         <WeekSelector weekStart={weekStart} onChange={handleWeekChange} />
         <DaySelector weekStart={weekStart} selectedDate={selectedDate} onSelect={setSelectedDate} />
-        <div className="day-heading">
-          {capitalize(formatDayLabel(selectedDate))}
-          {isToday && <span className="today-badge">Hoy</span>}
+        <div className="day-summary">
+          <div className="day-heading">
+            {capitalize(formatDayLabel(selectedDate))}
+            {isToday && <span className="today-badge">Hoy</span>}
+          </div>
+          <DayProgress
+            targetSeconds={workdaySeconds(selectedDate)}
+            reportedSeconds={reportedDaySeconds}
+            pendingSeconds={pendingDaySeconds}
+          />
         </div>
         <button className="btn-refresh" onClick={() => refetch()} disabled={loading}>
-          <span className={`refresh-icon ${loading ? "spinning" : ""}`}>↻</span>
+          <Icon name="refresh-cw" size={14} className={loading ? "spinning" : ""} />
           {loading ? "Actualizando…" : "Actualizar tareas"}
         </button>
       </div>
@@ -209,9 +264,11 @@ export function TimesheetScreen({ account, onLogout }: Props) {
             <div className="list-toolbar">
               <div className="list-toolbar-group">
                 <button className="btn-link" onClick={expandAll}>
+                  <Icon name="chevrons-down" size={14} />
                   Expandir todo
                 </button>
                 <button className="btn-link" onClick={collapseAll}>
+                  <Icon name="chevrons-up" size={14} />
                   Colapsar todo
                 </button>
               </div>
@@ -220,18 +277,21 @@ export function TimesheetScreen({ account, onLogout }: Props) {
                   className={filterMode === "all" ? "active" : ""}
                   onClick={() => setFilterMode("all")}
                 >
+                  <Icon name="list" size={14} />
                   Todas las tareas
                 </button>
                 <button
                   className={filterMode === "favorites" ? "active" : ""}
                   onClick={() => setFilterMode("favorites")}
                 >
+                  <Icon name="star" size={14} />
                   Destacadas
                 </button>
                 <button
                   className={filterMode === "active" ? "active" : ""}
                   onClick={() => setFilterMode("active")}
                 >
+                  <Icon name="clock" size={14} />
                   Con temporizador activo
                 </button>
               </div>
@@ -256,6 +316,8 @@ export function TimesheetScreen({ account, onLogout }: Props) {
         itemErrors={itemErrors}
         onReview={() => setReviewOpen(true)}
       />
+
+      <PoweredBy />
 
       {dailyFavoritesOpen && data && (
         <DailyFavoritesPrompt

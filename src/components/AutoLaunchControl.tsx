@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AutoLaunchSettings } from "../../electron/types";
+import { Icon } from "./Icon";
 
 export function AutoLaunchControl() {
   const [settings, setSettings] = useState<AutoLaunchSettings | null>(null);
@@ -21,8 +22,13 @@ export function AutoLaunchControl() {
 
   return (
     <div className="reminder-control">
-      <button className="btn-link" onClick={() => setOpen((v) => !v)}>
-        {settings?.enabled ? "🚀 Inicio automático" : "Inicio automático"}
+      <button
+        className={`header-btn icon-only ${settings?.enabled ? "on" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        title="Inicio automático"
+      >
+        <Icon name="power" />
+        <span className="lbl">Inicio automático</span>
       </button>
       {open && settings && (
         <div className="reminder-panel">

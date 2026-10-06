@@ -1,5 +1,6 @@
 import { formatShort } from "../timeFormat";
 import type { PendingItem } from "../hooks/useSync";
+import { Icon } from "./Icon";
 
 interface Props {
   pending: PendingItem[];
@@ -22,7 +23,10 @@ export function SyncBar({ pending, syncing, lastError, itemErrors, onReview }: P
             enviar
           </span>
         ) : (
-          <span className="sync-info-empty">Todo sincronizado</span>
+          <span className="sync-info-empty">
+            <Icon name="check-circle" size={15} />
+            Todo sincronizado
+          </span>
         )}
         {lastError && <div className="error-box">{lastError}</div>}
         {hasErrors && (
@@ -36,6 +40,7 @@ export function SyncBar({ pending, syncing, lastError, itemErrors, onReview }: P
         disabled={pending.length === 0 || syncing}
         onClick={onReview}
       >
+        <Icon name="send" size={14} />
         Revisar y enviar
       </button>
     </div>

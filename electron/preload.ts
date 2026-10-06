@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
+  AppMode,
   AppState,
   AutoLaunchSettings,
   Credentials,
@@ -8,6 +9,7 @@ import type {
   SubmitTimeEntriesRequest,
   SubmitTimeEntriesResponse,
   TimesheetResponse,
+  UpdateStatus,
 } from "./types";
 
 const api = {
@@ -27,6 +29,10 @@ const api = {
   ): Promise<SubmitTimeEntriesResponse> =>
     ipcRenderer.invoke("itm:submitTimeEntries", payload),
 
+  getMode: (): Promise<AppMode> => ipcRenderer.invoke("mode:get"),
+
+  setMode: (demo: boolean): Promise<{ ok: boolean }> => ipcRenderer.invoke("mode:set", demo),
+
   loadState: (): Promise<AppState> => ipcRenderer.invoke("state:load"),
 
   saveState: (state: AppState): Promise<void> => ipcRenderer.invoke("state:save", state),
@@ -42,6 +48,21 @@ const api = {
 
   setReminderSettings: (settings: ReminderSettings): Promise<void> =>
     ipcRenderer.invoke("reminder:setSettings", settings),
+
+  getUpdateStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke("updater:getStatus"),
+
+  checkForUpdates: (): Promise<void> => ipcRenderer.invoke("updater:check"),
+
+  downloadUpdate: (): Promise<void> => ipcRenderer.invoke("updater:download"),
+
+  installUpdate: (): Promise<void> => ipcRenderer.invoke("updater:install"),
+
+  /** Suscribe a los cambios de estado de la actualización; devuelve la función para cancelar. */
+  onUpdateStatus: (callback: (status: UpdateStatus) => void): (() => void) => {
+    const listener = (_e: unknown, status: UpdateStatus) => callback(status);
+    ipcRenderer.on("updater:status", listener);
+    return () => ipcRenderer.removeListener("updater:status", listener);
+  },
 
   getAutoLaunch: (): Promise<AutoLaunchSettings> => ipcRenderer.invoke("autoLaunch:get"),
 

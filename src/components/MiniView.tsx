@@ -1,5 +1,6 @@
 import type { useTimers } from "../hooks/useTimers";
 import { formatClock } from "../timeFormat";
+import { BrandMark, Icon } from "./Icon";
 
 interface Props {
   timers: ReturnType<typeof useTimers>;
@@ -12,8 +13,12 @@ export function MiniView({ timers, onExit }: Props) {
   return (
     <div className="mini-view">
       <div className="mini-header">
-        <span className="mini-title">⏱ Timesheet</span>
-        <button className="btn-link" onClick={onExit}>
+        <span className="mini-title">
+          <BrandMark size={20} />
+          Timesheet
+        </span>
+        <button className="header-btn" onClick={onExit}>
+          <Icon name="maximize-2" size={13} />
           Vista normal
         </button>
       </div>
