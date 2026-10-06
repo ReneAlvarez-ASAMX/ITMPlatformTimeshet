@@ -7,6 +7,7 @@ import { MiniView } from "../components/MiniView";
 import { ReminderSettingsControl } from "../components/ReminderSettingsControl";
 import { AutoLaunchControl } from "../components/AutoLaunchControl";
 import { DailyFavoritesPrompt } from "../components/DailyFavoritesPrompt";
+import { UpdateControl } from "../components/UpdateControl";
 import { SyncReviewPanel } from "../components/SyncReviewPanel";
 import { useTimesheet } from "../hooks/useTimesheet";
 import { useTimers } from "../hooks/useTimers";
@@ -174,6 +175,7 @@ export function TimesheetScreen({ account, onLogout }: Props) {
           />
           <ReminderSettingsControl />
           <AutoLaunchControl />
+          <UpdateControl />
           <button className="btn-link" onClick={() => setMini(true)}>
             Modo mini
           </button>

@@ -140,6 +140,24 @@ export const defaultReminderSettings = (): ReminderSettings => ({
   activeCheckIntervalMinutes: 15,
 });
 
+export type UpdateState =
+  | "unsupported" // app sin empaquetar o plataforma sin actualización automática
+  | "idle"
+  | "checking"
+  | "not-available"
+  | "available"
+  | "downloading"
+  | "downloaded"
+  | "error";
+
+export interface UpdateStatus {
+  state: UpdateState;
+  currentVersion: string;
+  version?: string; // versión nueva detectada
+  percent?: number; // progreso de descarga, 0–100
+  error?: string;
+}
+
 export interface AutoLaunchSettings {
   enabled: boolean;
   // false en desarrollo (app sin empaquetar): registrar electron.exe como programa de inicio no tiene sentido.

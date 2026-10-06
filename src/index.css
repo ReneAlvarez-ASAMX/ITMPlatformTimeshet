@@ -759,6 +759,11 @@ button:disabled {
   font-size: 12px;
 }
 
+.btn-link.update-available {
+  color: var(--primary);
+  font-weight: 600;
+}
+
 .reminder-hint {
   margin: 0;
   font-size: 11px;

@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as itm from "./itmClient";
 import * as store from "./store";
+import * as updater from "./updater";
 import type {
   AppState,
   AutoLaunchSettings,
@@ -163,7 +164,7 @@ function hasRunningTimer(): boolean {
   return Object.values(cachedState.timers).some((t) => t.running);
 }
 
-function notify(title: string, body: string) {
+function notify(title: string, body: string, beep = true) {
   if (Notification.isSupported()) {
     const notification = new Notification({
       title,
@@ -177,7 +178,7 @@ function notify(title: string, body: string) {
     });
     notification.show();
   }
-  shell.beep();
+  if (beep) shell.beep();
 }
 
 function fireReminder() {
@@ -267,6 +268,18 @@ app.whenReady().then(async () => {
   cachedState = await store.loadAppState();
   restartReminderTimer(await store.loadReminderSettings());
   setInterval(checkActiveTimers, ACTIVE_CHECK_TICK_MS);
+  updater.initUpdater({
+    getWindow: () => mainWindow,
+    onNewVersion: (version) =>
+      notify(
+        "Nueva versión disponible",
+        `ITM Platform Timesheet ${version} está lista para descargar. Ábrela para actualizar.`,
+        false
+      ),
+    beforeInstall: () => {
+      isQuitting = true;
+    },
+  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -368,6 +381,11 @@ ipcMain.handle("reminder:setSettings", async (_e, settings: ReminderSettings) =>
   await store.saveReminderSettings(settings);
   restartReminderTimer(settings);
 });
+
+ipcMain.handle("updater:getStatus", async () => updater.getUpdateStatus());
+ipcMain.handle("updater:check", async () => updater.checkForUpdates(true));
+ipcMain.handle("updater:download", async () => updater.downloadUpdate());
+ipcMain.handle("updater:install", async () => updater.installUpdate());
 
 ipcMain.handle("autoLaunch:get", async (): Promise<AutoLaunchSettings> => {
   return getAutoLaunch();
