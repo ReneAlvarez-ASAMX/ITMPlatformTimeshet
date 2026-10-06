@@ -836,6 +836,45 @@ button:disabled {
   background: var(--primary-hover);
 }
 
+.powered-by {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 5px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.powered-by a {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.powered-by img {
+  height: 24px;
+  width: auto;
+}
+
+.powered-by-text:hover {
+  color: var(--itm-navy);
+  text-decoration: underline;
+}
+
+.settings-screen {
+  position: relative;
+}
+
+.settings-screen .powered-by {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
 .error-box {
   background: var(--danger-bg);
   color: var(--danger);

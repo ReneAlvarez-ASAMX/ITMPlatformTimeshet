@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BrandMark } from "../components/Icon";
+import { PoweredBy } from "../components/PoweredBy";
 
 interface Props {
   onConnected: (account: { company: string; userId: string }) => void;
@@ -63,6 +64,7 @@ export function SettingsScreen({ onConnected }: Props) {
           </button>
         </form>
       </div>
+      <PoweredBy />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { DailyFavoritesPrompt } from "../components/DailyFavoritesPrompt";
 import { UpdateControl } from "../components/UpdateControl";
 import { BrandMark, Icon } from "../components/Icon";
 import { DayProgress } from "../components/DayProgress";
+import { PoweredBy } from "../components/PoweredBy";
 import { SyncReviewPanel } from "../components/SyncReviewPanel";
 import { useTimesheet } from "../hooks/useTimesheet";
 import { useTimers } from "../hooks/useTimers";
@@ -305,6 +306,8 @@ export function TimesheetScreen({ account, onLogout }: Props) {
         itemErrors={itemErrors}
         onReview={() => setReviewOpen(true)}
       />
+
+      <PoweredBy />
 
       {dailyFavoritesOpen && data && (
         <DailyFavoritesPrompt

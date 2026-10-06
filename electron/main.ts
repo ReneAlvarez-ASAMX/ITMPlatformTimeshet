@@ -19,7 +19,10 @@ process.env.APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 
-const NORMAL_SIZE = { width: 1100, height: 760 };
+// Único sitio externo que la app puede abrir desde un enlace (pie "Desarrollado por Actual Solutions").
+const EXTERNAL_LINK_PREFIX = "https://actualsolutions.tech/";
+
+const NORMAL_SIZE ={ width: 1100, height: 760 };
 const NORMAL_MIN_SIZE = { width: 820, height: 560 };
 const MINI_SIZE = { width: 300, height: 220 };
 
@@ -83,6 +86,21 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
+
+  // Los enlaces nunca navegan dentro de la ventana de la app: los de Actual Solutions
+  // se abren en el navegador del sistema y cualquier otro se descarta.
+  const openIfAllowed = (url: string) => {
+    if (url.startsWith(EXTERNAL_LINK_PREFIX)) shell.openExternal(url);
+  };
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openIfAllowed(url);
+    return { action: "deny" };
+  });
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (url === mainWindow?.webContents.getURL()) return;
+    event.preventDefault();
+    openIfAllowed(url);
+  });
 
   mainWindow.once("ready-to-show", () => {
     if (!startedHidden) mainWindow?.show();
