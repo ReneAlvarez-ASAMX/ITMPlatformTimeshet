@@ -291,7 +291,7 @@ button:disabled {
 
 .week-label {
   font-size: 13px;
-  min-width: 140px;
+  min-width: 110px;
   text-align: center;
 }
 
@@ -310,8 +310,8 @@ button:disabled {
 .day-bar {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 12px 24px;
+  gap: 14px;
+  padding: 10px 24px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
@@ -355,6 +355,80 @@ button:disabled {
 .day-chip.selected .day-chip-weekday,
 .day-chip.selected .day-chip-num {
   color: white;
+}
+
+.day-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 250px;
+}
+
+.day-progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 3px;
+}
+
+.day-progress-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  background: #e3e8ef;
+  overflow: hidden;
+}
+
+.day-progress-seg {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.day-progress-seg.reported,
+.dot.reported {
+  background: var(--itm-navy);
+}
+
+.day-progress-seg.pending,
+.dot.pending {
+  background: var(--itm-orange);
+}
+
+.day-progress-pct {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--itm-navy);
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+  text-align: right;
+}
+
+.day-progress-pct.complete {
+  color: var(--success);
+}
+
+.day-progress-legend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.day-progress-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
 }
 
 .day-heading {

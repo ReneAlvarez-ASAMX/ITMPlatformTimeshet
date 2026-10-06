@@ -9,11 +9,20 @@ import { AutoLaunchControl } from "../components/AutoLaunchControl";
 import { DailyFavoritesPrompt } from "../components/DailyFavoritesPrompt";
 import { UpdateControl } from "../components/UpdateControl";
 import { BrandMark, Icon } from "../components/Icon";
+import { DayProgress } from "../components/DayProgress";
 import { SyncReviewPanel } from "../components/SyncReviewPanel";
 import { useTimesheet } from "../hooks/useTimesheet";
 import { useTimers } from "../hooks/useTimers";
 import { collectPending, useSync } from "../hooks/useSync";
-import { startOfWeek, toIsoDate, addDays, formatDayLabel, todayStr } from "../timeFormat";
+import {
+  startOfWeek,
+  toIsoDate,
+  addDays,
+  formatDayLabel,
+  hhmmToSeconds,
+  todayStr,
+  workdaySeconds,
+} from "../timeFormat";
 
 interface Props {
   account: { company: string; userId: string };
@@ -139,6 +148,23 @@ export function TimesheetScreen({ account, onLogout }: Props) {
     [timers.timers]
   );
 
+  // Horas del día seleccionado: ya reportadas en ITM Platform y las de temporizadores sin enviar.
+  const reportedDaySeconds = useMemo(() => {
+    if (!data) return 0;
+    let total = 0;
+    for (const project of data.TimeReports) {
+      for (const wi of project.WorkItems) {
+        const entry = wi.TimeEntries.find((t) => t.Date === selectedDate);
+        total += hhmmToSeconds(entry?.ReportedHours);
+      }
+    }
+    return total;
+  }, [data, selectedDate]);
+
+  const pendingDaySeconds = Object.values(timers.timers)
+    .filter((t) => t.date === selectedDate)
+    .reduce((sum, t) => sum + timers.getElapsedSeconds(t.workItemId), 0);
+
   async function handleConfirmSync() {
     const result = await submit(pending, (ids) => timers.markSynced(ids));
     if (result.successCount > 0) refetch();
@@ -197,9 +223,16 @@ export function TimesheetScreen({ account, onLogout }: Props) {
       <div className="day-bar">
         <WeekSelector weekStart={weekStart} onChange={handleWeekChange} />
         <DaySelector weekStart={weekStart} selectedDate={selectedDate} onSelect={setSelectedDate} />
-        <div className="day-heading">
-          {capitalize(formatDayLabel(selectedDate))}
-          {isToday && <span className="today-badge">Hoy</span>}
+        <div className="day-summary">
+          <div className="day-heading">
+            {capitalize(formatDayLabel(selectedDate))}
+            {isToday && <span className="today-badge">Hoy</span>}
+          </div>
+          <DayProgress
+            targetSeconds={workdaySeconds(selectedDate)}
+            reportedSeconds={reportedDaySeconds}
+            pendingSeconds={pendingDaySeconds}
+          />
         </div>
         <button className="btn-refresh" onClick={() => refetch()} disabled={loading}>
           <Icon name="refresh-cw" size={14} className={loading ? "spinning" : ""} />

@@ -77,7 +77,17 @@ export function todayAtTime(hhmm: string): number | null {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0).getTime();
 }
 
-const WEEKDAY_SHORT = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+/** Horas de una jornada laborable estándar (lunes a viernes). */
+export const WORKDAY_HOURS = 8;
+
+/** Segundos laborables de una fecha ISO "YYYY-MM-DD": 8 h de lunes a viernes y 0 en fin de semana. */
+export function workdaySeconds(isoDate: string): number {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const weekday = new Date(y, m - 1, d).getDay(); // 0 = domingo, 6 = sábado
+  return weekday >= 1 && weekday <= 5 ? WORKDAY_HOURS * 3600 : 0;
+}
+
+const WEEKDAY_SHORT =["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 
 export function weekdayShort(date: Date): string {
   return WEEKDAY_SHORT[date.getDay()];
