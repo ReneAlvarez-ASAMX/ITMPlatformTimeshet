@@ -25,6 +25,18 @@ function setStatus(next: Partial<UpdateStatus> & Pick<UpdateStatus, "state">) {
   options.getWindow()?.webContents.send("updater:status", status);
 }
 
+/** Convierte el error técnico del actualizador (a menudo un volcado de cabeceras HTTP) en un mensaje legible. */
+function friendlyError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  if (/\b(401|403|404)\b/.test(raw) || raw.includes("releases.atom")) {
+    return "No se pudieron consultar las versiones publicadas. Es posible que todavía no haya ninguna disponible.";
+  }
+  if (/ENOTFOUND|ETIMEDOUT|ECONNREFUSED|ECONNRESET|ERR_INTERNET_DISCONNECTED|ERR_NETWORK|net::/i.test(raw)) {
+    return "No hay conexión con GitHub. Comprueba tu conexión a internet e inténtalo de nuevo.";
+  }
+  return raw.split("\n")[0].slice(0, 200);
+}
+
 export function getUpdateStatus(): UpdateStatus {
   return status;
 }
@@ -59,7 +71,7 @@ export function initUpdater(opts: UpdaterOptions) {
     console.error("[updater]", err);
     // Una comprobación automática que falla (sin red, repo aún privado…) no debe molestar.
     if (silentCheck && status.state !== "downloading") setStatus({ state: "idle" });
-    else setStatus({ state: "error", version: status.version, error: err?.message ?? String(err) });
+    else setStatus({ state: "error", version: status.version, error: friendlyError(err) });
   });
 
   setTimeout(() => checkForUpdates(false), FIRST_CHECK_DELAY_MS);
