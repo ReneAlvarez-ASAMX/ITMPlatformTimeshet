@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from "electron";
 import { autoUpdater } from "electron-updater";
+import { t } from "./i18n";
 import type { UpdateStatus } from "./types";
 
 // Primera comprobación poco después de arrancar (no compite con el login) y luego periódica.
@@ -30,13 +31,13 @@ function friendlyError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
   // El repositorio es accesible pero aún no tiene ninguna Release publicada.
   if (/No published versions/i.test(raw)) {
-    return "Todavía no hay versiones publicadas en GitHub.";
+    return t("update.error.noReleases");
   }
   if (/\b(401|403|404)\b/.test(raw) || raw.includes("releases.atom")) {
-    return "No se pudieron consultar las versiones publicadas. Es posible que todavía no haya ninguna disponible.";
+    return t("update.error.fetch");
   }
   if (/ENOTFOUND|ETIMEDOUT|ECONNREFUSED|ECONNRESET|ERR_INTERNET_DISCONNECTED|ERR_NETWORK|net::/i.test(raw)) {
-    return "No hay conexión con GitHub. Comprueba tu conexión a internet e inténtalo de nuevo.";
+    return t("update.error.network");
   }
   return raw.split("\n")[0].slice(0, 200);
 }

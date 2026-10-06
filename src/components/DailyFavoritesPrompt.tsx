@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { TimeReportGroup } from "../../electron/types";
+import { useI18n } from "../i18n";
 import { Icon } from "./Icon";
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
  * destacadas (la prioridad cambia cada día) y, si es así, deja elegir de nuevo desde cero.
  */
 export function DailyFavoritesPrompt({ projects, favoriteCount, onSave, onClose }: Props) {
+  const { t } = useI18n();
   const [step, setStep] = useState<"ask" | "pick">("ask");
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
@@ -31,25 +33,24 @@ export function DailyFavoritesPrompt({ projects, favoriteCount, onSave, onClose 
       <div className="review-backdrop">
         <div className="review-panel daily-favorites-ask">
           <div className="review-header">
-            <h2>Tareas destacadas de hoy</h2>
+            <h2>{t("fav.title")}</h2>
           </div>
           <div className="daily-favorites-body">
-            <p>
-              ¿Quieres reestablecer tu lista de tareas destacadas? La prioridad puede ser distinta
-              cada día.
-            </p>
+            <p>{t("fav.ask")}</p>
             <p className="hint">
               {favoriteCount === 0
-                ? "Ahora mismo no tienes ninguna tarea destacada."
-                : `Ahora mismo tienes ${favoriteCount} ${favoriteCount === 1 ? "tarea destacada" : "tareas destacadas"}.`}
+                ? t("fav.noneNow")
+                : favoriteCount === 1
+                ? t("fav.countOne")
+                : t("fav.countMany", { count: favoriteCount })}
             </p>
           </div>
           <div className="review-actions">
             <button className="btn-link" onClick={onClose}>
-              No, mantener la lista
+              {t("fav.keep")}
             </button>
             <button className="btn-sync" onClick={() => setStep("pick")}>
-              Sí, reestablecer
+              {t("fav.reset")}
             </button>
           </div>
         </div>
@@ -61,7 +62,7 @@ export function DailyFavoritesPrompt({ projects, favoriteCount, onSave, onClose 
     <div className="review-backdrop">
       <div className="review-panel">
         <div className="review-header">
-          <h2>Marca tus tareas destacadas de hoy</h2>
+          <h2>{t("fav.pickTitle")}</h2>
         </div>
         <div className="review-list">
           {projects.map((project) => (
@@ -74,7 +75,7 @@ export function DailyFavoritesPrompt({ projects, favoriteCount, onSave, onClose 
                     <button
                       className={`btn-favorite ${active ? "active" : ""}`}
                       onClick={() => toggle(wi.WorkItemId)}
-                      title={active ? "Quitar de destacadas" : "Marcar como destacada"}
+                      title={active ? t("task.favorite.remove") : t("task.favorite.add")}
                       aria-pressed={active}
                     >
                       <Icon name="star" size={16} filled={active} />
@@ -88,10 +89,10 @@ export function DailyFavoritesPrompt({ projects, favoriteCount, onSave, onClose 
         </div>
         <div className="review-actions">
           <button className="btn-link" onClick={onClose}>
-            Cancelar (mantener la lista anterior)
+            {t("fav.cancelKeep")}
           </button>
           <button className="btn-sync" onClick={() => onSave([...selected])}>
-            Guardar destacadas ({selected.size})
+            {t("fav.save", { count: selected.size })}
           </button>
         </div>
       </div>

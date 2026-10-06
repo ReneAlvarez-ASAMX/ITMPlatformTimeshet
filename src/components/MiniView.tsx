@@ -1,4 +1,5 @@
 import type { useTimers } from "../hooks/useTimers";
+import { useI18n } from "../i18n";
 import { formatClock } from "../timeFormat";
 import { BrandMark, Icon } from "./Icon";
 
@@ -8,7 +9,8 @@ interface Props {
 }
 
 export function MiniView({ timers, onExit }: Props) {
-  const running = Object.values(timers.timers).filter((t) => t.running);
+  const { t } = useI18n();
+  const running = Object.values(timers.timers).filter((timer) => timer.running);
 
   return (
     <div className="mini-view">
@@ -19,26 +21,31 @@ export function MiniView({ timers, onExit }: Props) {
         </span>
         <button className="header-btn" onClick={onExit}>
           <Icon name="maximize-2" size={13} />
-          Vista normal
+          {t("mini.normalView")}
         </button>
       </div>
       <div className="mini-list">
         {running.length === 0 ? (
-          <div className="mini-empty">No hay temporizadores activos.</div>
+          <div className="mini-empty">{t("mini.empty")}</div>
         ) : (
-          running.map((t) => (
-            <div key={t.workItemId} className="mini-task">
+          running.map((timer) => (
+            <div key={timer.workItemId} className="mini-task">
               <div className="mini-task-info">
-                <div className="mini-task-name" title={t.taskName}>
-                  {t.taskName}
+                <div className="mini-task-name" title={timer.taskName}>
+                  {timer.taskName}
                 </div>
-                <div className="mini-task-project" title={t.projectName}>
-                  {t.projectName}
+                <div className="mini-task-project" title={timer.projectName}>
+                  {timer.projectName}
                 </div>
               </div>
-              <span className="mini-clock">{formatClock(timers.getElapsedSeconds(t.workItemId))}</span>
-              <button className="btn-pause mini-stop" onClick={() => timers.pause(t.workItemId)}>
-                Detener
+              <span className="mini-clock">
+                {formatClock(timers.getElapsedSeconds(timer.workItemId))}
+              </span>
+              <button
+                className="btn-pause mini-stop"
+                onClick={() => timers.pause(timer.workItemId)}
+              >
+                {t("mini.stop")}
               </button>
             </div>
           ))

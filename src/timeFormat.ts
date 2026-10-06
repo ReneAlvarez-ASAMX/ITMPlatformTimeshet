@@ -87,28 +87,39 @@ export function workdaySeconds(isoDate: string): number {
   return weekday >= 1 && weekday <= 5 ? WORKDAY_HOURS * 3600 : 0;
 }
 
-const WEEKDAY_SHORT =["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
-export function weekdayShort(date: Date): string {
-  return WEEKDAY_SHORT[date.getDay()];
+function formatter(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = locale + JSON.stringify(options);
+  let f = formatterCache.get(key);
+  if (!f) {
+    f = new Intl.DateTimeFormat(locale, options);
+    formatterCache.set(key, f);
+  }
+  return f;
 }
 
-const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("es-ES", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
-
-/** Formatea una fecha ISO "YYYY-MM-DD" como "jueves, 13 de agosto". */
-export function formatDayLabel(isoDate: string): string {
-  const [y, m, d] = isoDate.split("-").map(Number);
-  return DAY_LABEL_FORMATTER.format(new Date(y, m - 1, d));
+/** Día de la semana abreviado ("lun", "Mon", "seg") en la configuración regional indicada. */
+export function weekdayShort(date: Date, locale = "es-ES"): string {
+  return formatter(locale, { weekday: "short" }).format(date).replace(/\.$/, "");
 }
 
-const DAY_SHORT_FORMATTER = new Intl.DateTimeFormat("es-ES", { day: "2-digit", month: "short" });
-
-/** Formatea una fecha ISO "YYYY-MM-DD" como "13 ago". */
-export function formatDayShort(isoDate: string): string {
+/** Formatea una fecha ISO "YYYY-MM-DD" como "jueves, 13 de agosto" (según el idioma). */
+export function formatDayLabel(isoDate: string, locale = "es-ES"): string {
   const [y, m, d] = isoDate.split("-").map(Number);
-  return DAY_SHORT_FORMATTER.format(new Date(y, m - 1, d));
+  return formatter(locale, { weekday: "long", day: "numeric", month: "long" }).format(
+    new Date(y, m - 1, d)
+  );
+}
+
+/** Formatea una fecha ISO "YYYY-MM-DD" como "13 ago" (según el idioma). */
+export function formatDayShort(isoDate: string, locale = "es-ES"): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return formatter(locale, { day: "2-digit", month: "short" }).format(new Date(y, m - 1, d));
+}
+
+/** Rango corto de una semana, por ejemplo "05 oct – 11 oct". */
+export function formatWeekRange(start: Date, end: Date, locale = "es-ES"): string {
+  const f = formatter(locale, { day: "2-digit", month: "short" });
+  return `${f.format(start)} – ${f.format(end)}`;
 }

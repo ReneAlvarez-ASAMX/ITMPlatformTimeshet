@@ -4,6 +4,14 @@ import { fileURLToPath } from "node:url";
 import * as itm from "./itmClient";
 import * as store from "./store";
 import * as updater from "./updater";
+import {
+  DEFAULT_LANGUAGE,
+  getCurrentLanguage,
+  parseLanguage,
+  setCurrentLanguage,
+  t as tr,
+} from "./i18n";
+import type { Language } from "./i18n";
 import type {
   AppMode,
   AppState,
@@ -160,14 +168,21 @@ function createTray() {
   });
 }
 
+let trayStatusLabel: string | undefined;
+
 function updateTrayMenu(statusLabel?: string) {
+  trayStatusLabel = statusLabel;
+  rebuildTray();
+}
+
+function rebuildTray() {
   if (!tray) return;
-  tray.setToolTip(statusLabel ? `${appTitle()} — ${statusLabel}` : appTitle());
+  tray.setToolTip(trayStatusLabel ? `${appTitle()} — ${trayStatusLabel}` : appTitle());
   const menu = Menu.buildFromTemplate([
-    { label: "Mostrar", click: () => mainWindow?.show() },
+    { label: tr("tray.show"), click: () => mainWindow?.show() },
     { type: "separator" },
     {
-      label: "Salir",
+      label: tr("tray.quit"),
       click: () => {
         isQuitting = true;
         app.quit();
@@ -224,10 +239,7 @@ function notify(title: string, body: string, beep = true) {
 }
 
 function fireReminder() {
-  notify(
-    "Recordatorio de timesheet",
-    "No tienes ningún temporizador activo. ¿En qué estás trabajando ahora?"
-  );
+  notify(tr("reminder.noTimerTitle"), tr("reminder.noTimerBody"));
 }
 
 function restartReminderTimer(settings: ReminderSettings) {
@@ -277,10 +289,10 @@ function checkActiveTimers() {
   }
   if (due.length === 0) return;
   notify(
-    "Temporizador activo",
+    tr("reminder.activeTitle"),
     due.length === 1
-      ? `Sigue en marcha: ${due[0]}. ¿Continúas trabajando en esta tarea?`
-      : `Siguen en marcha ${due.length} temporizadores: ${due.join(", ")}. ¿Continúas trabajando en ellas?`
+      ? tr("reminder.activeOne", { task: due[0] })
+      : tr("reminder.activeMany", { count: due.length, tasks: due.join(", ") })
   );
 }
 
@@ -308,6 +320,9 @@ app.whenReady().then(async () => {
   demoLocked = process.argv.includes("--demo");
   demoMode = demoLocked || (await store.loadDemoFlag());
   store.setProfile(demoMode);
+  setCurrentLanguage(
+    (await store.loadLanguage()) ?? parseLanguage(app.getLocale()) ?? DEFAULT_LANGUAGE
+  );
   createWindow();
   createTray();
   cachedState = await store.loadAppState();
@@ -316,11 +331,7 @@ app.whenReady().then(async () => {
   updater.initUpdater({
     getWindow: () => mainWindow,
     onNewVersion: (version) =>
-      notify(
-        "Nueva versión disponible",
-        `ITM Platform Timesheet ${version} está lista para descargar. Ábrela para actualizar.`,
-        false
-      ),
+      notify(tr("update.notifyTitle"), tr("update.notifyBody", { version }), false),
     beforeInstall: () => {
       isQuitting = true;
     },
@@ -364,7 +375,7 @@ ipcMain.handle(
   async (_e, args: { startDate: string; endDate: string }) => {
     const creds = await store.loadCredentials();
     const session = await requireSession();
-    if (!creds || !session) throw new Error("No hay una sesión iniciada.");
+    if (!creds || !session) throw new Error(tr("error.noSession"));
     try {
       return await itm.getTimesheet(
         currentHost(),
@@ -395,7 +406,7 @@ ipcMain.handle(
   async (_e, payload: SubmitTimeEntriesRequest) => {
     const creds = await store.loadCredentials();
     const session = await requireSession();
-    if (!creds || !session) throw new Error("No hay una sesión iniciada.");
+    if (!creds || !session) throw new Error(tr("error.noSession"));
     try {
       return await itm.submitTimeEntries(currentHost(), creds.company, session.token, payload);
     } catch (err) {
@@ -409,6 +420,44 @@ ipcMain.handle(
   }
 );
 
+/**
+ * Lee el idioma de "Mi perfil" en ITM Platform y lo aplica a la app. Si no se puede leer (sin red,
+ * sin sesión…) se mantiene el último idioma conocido, y a falta de este, el del sistema.
+ */
+async function refreshLanguage(): Promise<Language> {
+  const creds = await store.loadCredentials();
+  const session = await store.loadSession();
+  if (!creds || !session) return getCurrentLanguage();
+  const fetchRaw = (token: string) =>
+    itm.getUserLanguage(currentHost(), creds.company, token, session.userId);
+  try {
+    let raw: string | null;
+    try {
+      raw = await fetchRaw(session.token);
+    } catch (err) {
+      // El token puede haber caducado: se renueva con la API Key y se reintenta una vez.
+      if (!(err instanceof itm.ItmApiError) || (err.status !== 401 && err.status !== 400)) throw err;
+      const relogged = await itm.login(currentHost(), creds.company, creds.apiKey);
+      await store.saveSession({ token: relogged.Token, userId: relogged.UserID });
+      raw = await fetchRaw(relogged.Token);
+    }
+    const parsed = parseLanguage(raw);
+    if (parsed) {
+      await store.saveLanguage(parsed);
+      if (parsed !== getCurrentLanguage()) {
+        setCurrentLanguage(parsed);
+        rebuildTray();
+      }
+    }
+  } catch (err) {
+    console.warn("[language] no se pudo leer el idioma del perfil de ITM Platform:", err);
+  }
+  return getCurrentLanguage();
+}
+
+ipcMain.handle("language:get", async (): Promise<Language> => getCurrentLanguage());
+ipcMain.handle("language:refresh", async (): Promise<Language> => refreshLanguage());
+
 ipcMain.handle("mode:get", async (): Promise<AppMode> => currentMode());
 
 ipcMain.handle("mode:set", async (_e, demo: boolean): Promise<{ ok: boolean }> => {
@@ -418,6 +467,9 @@ ipcMain.handle("mode:set", async (_e, demo: boolean): Promise<{ ok: boolean }> =
   store.setProfile(demoMode);
   await store.saveDemoFlag(demoMode);
   cachedState = await store.loadAppState();
+  setCurrentLanguage(
+    (await store.loadLanguage()) ?? parseLanguage(app.getLocale()) ?? DEFAULT_LANGUAGE
+  );
   lastActiveCheckAt.clear();
   syncActiveCheckTracking();
   updateTrayMenu();

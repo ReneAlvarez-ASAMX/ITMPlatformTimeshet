@@ -1,4 +1,5 @@
 import { formatShort } from "../timeFormat";
+import { useI18n } from "../i18n";
 
 interface Props {
   /** Segundos laborables del día (8 h de lunes a viernes, 0 en fin de semana). */
@@ -16,6 +17,7 @@ function formatHours(seconds: number): string {
 }
 
 export function DayProgress({ targetSeconds, reportedSeconds, pendingSeconds }: Props) {
+  const { t } = useI18n();
   const totalSeconds = reportedSeconds + pendingSeconds;
   const hasTarget = targetSeconds > 0;
   const percent = hasTarget ? Math.round((totalSeconds / targetSeconds) * 100) : null;
@@ -26,19 +28,19 @@ export function DayProgress({ targetSeconds, reportedSeconds, pendingSeconds }: 
   const width = (seconds: number) => (scale > 0 ? `${(seconds / scale) * 100}%` : "0%");
 
   const summary = hasTarget
-    ? `${formatHours(totalSeconds)} de ${formatHours(targetSeconds)}`
-    : `${formatHours(totalSeconds)} · día no laborable`;
+    ? t("day.summary", { total: formatHours(totalSeconds), target: formatHours(targetSeconds) })
+    : t("day.summaryNonWorking", { total: formatHours(totalSeconds) });
 
   return (
     <div className="day-progress" title={summary}>
       <div
         className="day-progress-bar"
         role="progressbar"
-        aria-label="Horas del día respecto a la jornada"
+        aria-label={t("day.progressLabel")}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.min(percent ?? 0, 100)}
-        aria-valuetext={percent !== null ? `${percent}%` : "Día no laborable"}
+        aria-valuetext={percent !== null ? `${percent}%` : t("day.nonWorking")}
       >
         <div className="day-progress-seg reported" style={{ width: width(reportedSeconds) }} />
         <div className="day-progress-seg pending" style={{ width: width(pendingSeconds) }} />
@@ -49,13 +51,15 @@ export function DayProgress({ targetSeconds, reportedSeconds, pendingSeconds }: 
       <div className="day-progress-legend">
         <span>
           <i className="dot reported" />
-          En ITM {formatHours(reportedSeconds)}
+          {t("day.inItm", { time: formatHours(reportedSeconds) })}
         </span>
         <span>
           <i className="dot pending" />
-          Sin enviar {formatHours(pendingSeconds)}
+          {t("day.unsent", { time: formatHours(pendingSeconds) })}
         </span>
-        <span>{hasTarget ? `Jornada ${formatHours(targetSeconds)}` : "Día no laborable"}</span>
+        <span>
+          {hasTarget ? t("day.workday", { time: formatHours(targetSeconds) }) : t("day.nonWorking")}
+        </span>
       </div>
     </div>
   );

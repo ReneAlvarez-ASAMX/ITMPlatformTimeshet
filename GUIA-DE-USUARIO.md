@@ -2,7 +2,7 @@
 
 Aplicación de escritorio para registrar el tiempo que dedicas a tus tareas de **ITM Platform**. Cronometras mientras trabajas (o añades el tiempo a mano) y, cuando quieras, envías las horas a ITM Platform con un clic.
 
-Versión de esta guía: 1.1.0 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
+Versión de esta guía: 1.1.1 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
 
 ## Contenido
 
@@ -63,6 +63,12 @@ Al abrir la aplicación por primera vez verás la pantalla **Conectar con ITM Pl
 Si los datos son correctos, entrarás directamente a tus tareas. Si no, la aplicación mostrará el motivo (por ejemplo, que la API Key no es válida). Corrige el dato y vuelve a intentarlo.
 
 A partir de ahora la aplicación **recuerda tu sesión**: no tendrás que volver a introducir los datos cada vez que la abras.
+
+### Idioma
+
+La aplicación se muestra en el **mismo idioma que tienes configurado en ITM Platform** (*Mi perfil*): español, inglés o portugués. Se lee al iniciar sesión, al abrir la aplicación y cada vez que pulsas **Actualizar tareas**, así que si cambias el idioma en ITM Platform solo tienes que actualizar para ver el cambio. Esta guía está escrita en español; los nombres de los botones y mensajes cambian según tu idioma.
+
+Si la aplicación no puede consultar tu perfil (por ejemplo, sin conexión), usa el último idioma que conocía o, la primera vez, el idioma de tu sistema.
 
 ---
 

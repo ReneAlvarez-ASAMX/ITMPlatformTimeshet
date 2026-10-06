@@ -1,7 +1,7 @@
 {
   "name": "itm-platform-timesheet",
   "productName": "ITM Platform Timesheet",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Control de timesheet de escritorio integrado con ITM Platform",
   "author": "Actual Solutions",
   "private": true,

@@ -1,4 +1,5 @@
 import { addDays, toIsoDate, todayStr, weekdayShort } from "../timeFormat";
+import { useI18n } from "../i18n";
 
 interface Props {
   weekStart: Date;
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function DaySelector({ weekStart, selectedDate, onSelect }: Props) {
+  const { locale } = useI18n();
   const today = todayStr();
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -22,7 +24,7 @@ export function DaySelector({ weekStart, selectedDate, onSelect }: Props) {
             className={`day-chip ${isSelected ? "selected" : ""} ${isToday ? "today" : ""}`}
             onClick={() => onSelect(iso)}
           >
-            <span className="day-chip-weekday">{weekdayShort(day)}</span>
+            <span className="day-chip-weekday">{weekdayShort(day, locale)}</span>
             <span className="day-chip-num">{day.getDate()}</span>
           </button>
         );

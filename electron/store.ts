@@ -1,6 +1,7 @@
 import { app, safeStorage } from "electron";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import type { Language } from "./i18n";
 import type { AppState, Credentials, ReminderSettings, Session } from "./types";
 import { defaultReminderSettings, emptyAppState } from "./types";
 
@@ -26,6 +27,10 @@ function sessionPath(): string {
 
 function statePath(): string {
   return path.join(userDataDir(), `state${profileSuffix}.json`);
+}
+
+function languagePath(): string {
+  return path.join(userDataDir(), `language${profileSuffix}.json`);
 }
 
 function reminderPath(): string {
@@ -128,6 +133,16 @@ export async function loadDemoFlag(): Promise<boolean> {
 
 export async function saveDemoFlag(demo: boolean): Promise<void> {
   await writeJson(modePath(), { demo });
+}
+
+/** Último idioma conocido del perfil de ITM Platform del usuario (por entorno), para arrancar sin esperar a la red. */
+export async function loadLanguage(): Promise<Language | null> {
+  const data = await readJson<{ language?: Language }>(languagePath());
+  return data?.language ?? null;
+}
+
+export async function saveLanguage(language: Language): Promise<void> {
+  await writeJson(languagePath(), { language });
 }
 
 export async function loadReminderSettings(): Promise<ReminderSettings> {

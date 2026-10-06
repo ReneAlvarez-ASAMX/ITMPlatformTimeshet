@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import type { UpdateStatus } from "../../electron/types";
+import { useI18n } from "../i18n";
 import { Icon } from "./Icon";
 
 export function UpdateControl() {
+  const { t } = useI18n();
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -15,9 +17,9 @@ export function UpdateControl() {
 
   const updateReady = status.state === "available" || status.state === "downloaded";
   const label = updateReady
-    ? `Actualizar a v${status.version}`
+    ? t("update.available", { version: status.version ?? "" })
     : status.state === "downloading"
-    ? `Descargando… ${status.percent ?? 0}%`
+    ? t("update.downloading", { percent: status.percent ?? 0 })
     : `v${status.currentVersion}`;
 
   return (
@@ -34,7 +36,7 @@ export function UpdateControl() {
           <UpdateBody status={status} />
           <div className="reminder-panel-actions">
             <button type="button" className="btn-link" onClick={() => setOpen(false)}>
-              Cerrar
+              {t("common.close")}
             </button>
           </div>
         </div>
@@ -44,32 +46,35 @@ export function UpdateControl() {
 }
 
 function UpdateBody({ status }: { status: UpdateStatus }) {
-  const current = <p className="reminder-hint">Versión instalada: v{status.currentVersion}</p>;
+  const { t } = useI18n();
+  const current = (
+    <p className="reminder-hint">{t("update.installed", { version: status.currentVersion })}</p>
+  );
 
   switch (status.state) {
     case "unsupported":
       return (
         <>
           {current}
-          <p className="reminder-hint">
-            Las actualizaciones automáticas solo están disponibles en la app instalada para Windows.
-          </p>
+          <p className="reminder-hint">{t("update.unsupported")}</p>
         </>
       );
     case "checking":
       return (
         <>
           {current}
-          <p className="reminder-hint">Buscando actualizaciones…</p>
+          <p className="reminder-hint">{t("update.checking")}</p>
         </>
       );
     case "available":
       return (
         <>
           {current}
-          <p className="reminder-hint">Hay una nueva versión: v{status.version}.</p>
+          <p className="reminder-hint">
+            {t("update.newVersion", { version: status.version ?? "" })}
+          </p>
           <button type="button" onClick={() => window.itm.downloadUpdate()}>
-            Descargar
+            {t("update.download")}
           </button>
         </>
       );
@@ -78,7 +83,10 @@ function UpdateBody({ status }: { status: UpdateStatus }) {
         <>
           {current}
           <p className="reminder-hint">
-            Descargando v{status.version}… {status.percent ?? 0}%
+            {t("update.downloadingVersion", {
+              version: status.version ?? "",
+              percent: status.percent ?? 0,
+            })}
           </p>
         </>
       );
@@ -86,12 +94,9 @@ function UpdateBody({ status }: { status: UpdateStatus }) {
       return (
         <>
           {current}
-          <p className="reminder-hint">
-            La versión v{status.version} está descargada. La app se cerrará y volverá a abrirse al
-            instalar.
-          </p>
+          <p className="reminder-hint">{t("update.ready", { version: status.version ?? "" })}</p>
           <button type="button" onClick={() => window.itm.installUpdate()}>
-            Reiniciar e instalar
+            {t("update.install")}
           </button>
         </>
       );
@@ -99,9 +104,9 @@ function UpdateBody({ status }: { status: UpdateStatus }) {
       return (
         <>
           {current}
-          <div className="error-box">{status.error ?? "No se pudo completar la actualización."}</div>
+          <div className="error-box">{status.error ?? t("update.errorFallback")}</div>
           <button type="button" onClick={() => window.itm.checkForUpdates()}>
-            Reintentar
+            {t("common.retry")}
           </button>
         </>
       );
@@ -111,9 +116,11 @@ function UpdateBody({ status }: { status: UpdateStatus }) {
       return (
         <>
           {current}
-          {status.state === "not-available" && <p className="reminder-hint">Estás al día.</p>}
+          {status.state === "not-available" && (
+            <p className="reminder-hint">{t("update.upToDate")}</p>
+          )}
           <button type="button" onClick={() => window.itm.checkForUpdates()}>
-            Buscar actualizaciones
+            {t("update.check")}
           </button>
         </>
       );

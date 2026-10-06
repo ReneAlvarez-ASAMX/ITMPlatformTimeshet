@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { TimeReportSubmitEntry, TimerRecord } from "../../electron/types";
+import { useI18n } from "../i18n";
 import { hhmmToSeconds, secondsToHHMM } from "../timeFormat";
 
 const MIN_SYNCABLE_SECONDS = 30;
@@ -47,6 +48,9 @@ export function collectPending(
 }
 
 export function useSync() {
+  const { t } = useI18n();
+  const tRef = useRef(t);
+  tRef.current = t;
   const [syncing, setSyncing] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [itemErrors, setItemErrors] = useState<Record<number, string>>({});
@@ -98,12 +102,12 @@ export function useSync() {
         if (successIds.length > 0) onSynced(successIds);
 
         if (res.StatusCode >= 400 && successIds.length === 0) {
-          setLastError(res.StatusMessage || "No se pudieron enviar las horas.");
+          setLastError(res.StatusMessage || tRef.current("sync.error.send"));
         }
 
         return { successCount: successIds.length, failureCount: failedIds.size };
       } catch (err: any) {
-        setLastError(err?.message ?? "Error al enviar las horas a ITM Platform.");
+        setLastError(err?.message ?? tRef.current("sync.error.generic"));
         return { successCount: 0, failureCount: pending.length };
       } finally {
         setSyncing(false);

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import type { AutoLaunchSettings } from "../../electron/types";
+import { useI18n } from "../i18n";
 import { Icon } from "./Icon";
 
 export function AutoLaunchControl() {
+  const { t } = useI18n();
   const [settings, setSettings] = useState<AutoLaunchSettings | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -25,10 +27,10 @@ export function AutoLaunchControl() {
       <button
         className={`header-btn icon-only ${settings?.enabled ? "on" : ""}`}
         onClick={() => setOpen((v) => !v)}
-        title="Inicio automático"
+        title={t("autoLaunch.title")}
       >
         <Icon name="power" />
-        <span className="lbl">Inicio automático</span>
+        <span className="lbl">{t("autoLaunch.title")}</span>
       </button>
       {open && settings && (
         <div className="reminder-panel">
@@ -39,16 +41,14 @@ export function AutoLaunchControl() {
               disabled={!settings.supported || saving}
               onChange={(e) => handleToggle(e.target.checked)}
             />
-            Iniciar la aplicación al iniciar sesión en el sistema
+            {t("autoLaunch.checkbox")}
           </label>
           <p className="reminder-hint">
-            {settings.supported
-              ? "Al arrancar con el sistema, la app queda en la bandeja hasta que la abras."
-              : "Solo disponible en la aplicación instalada, no en modo desarrollo."}
+            {settings.supported ? t("autoLaunch.hintOn") : t("autoLaunch.hintUnsupported")}
           </p>
           <div className="reminder-panel-actions">
             <button type="button" className="btn-link" onClick={() => setOpen(false)}>
-              Cerrar
+              {t("common.close")}
             </button>
           </div>
         </div>

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { AppMode } from "../../electron/types";
 import { BrandMark } from "../components/Icon";
-import { useSecretTaps } from "../hooks/useSecretTaps";
-import { switchMode } from "../modeSwitch";
 import { PoweredBy } from "../components/PoweredBy";
+import { useSecretTaps } from "../hooks/useSecretTaps";
+import { useI18n } from "../i18n";
+import { switchMode } from "../modeSwitch";
 
 interface Props {
   mode: AppMode;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function SettingsScreen({ mode, onConnected }: Props) {
+  const { t } = useI18n();
   const [company, setCompany] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [connecting, setConnecting] = useState(false);
@@ -28,7 +30,7 @@ export function SettingsScreen({ mode, onConnected }: Props) {
       const res = await window.itm.login({ company: companyValue, apiKey: apiKey.trim() });
       onConnected({ company: companyValue, userId: res.UserID });
     } catch (err: any) {
-      setError(err?.message ?? "No se pudo conectar con ITM Platform.");
+      setError(err?.message ?? t("settings.connectError"));
     } finally {
       setConnecting(false);
     }
@@ -44,32 +46,24 @@ export function SettingsScreen({ mode, onConnected }: Props) {
           <span className="settings-brand-sub">TIMESHEET</span>
           {mode.demo && <span className="demo-badge">DEMO</span>}
         </div>
-        <h1>Conectar con ITM Platform</h1>
-        {mode.demo ? (
-          <p className="hint">
-            Entorno de demostración <strong>{mode.fixedCompany}</strong>. Introduce la API Key de
-            tu usuario en este entorno.
-          </p>
-        ) : (
-          <p className="hint">
-            Introduce el identificador de tu empresa (el que usas para acceder a ITM Platform)
-            y tu API Key personal, disponible en tu perfil de ITM Platform.
-          </p>
-        )}
+        <h1>{t("settings.title")}</h1>
+        <p className="hint">
+          {mode.demo ? t("settings.demoHint", { company: mode.fixedCompany }) : t("settings.hint")}
+        </p>
         <form onSubmit={handleSubmit}>
           {!mode.demo && (
             <label>
-              Empresa (company URL)
+              {t("settings.company")}
               <input
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                placeholder="miempresa"
+                placeholder={t("settings.companyPlaceholder")}
                 autoFocus
               />
             </label>
           )}
           <label>
-            API Key
+            {t("settings.apiKey")}
             <input
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
@@ -80,7 +74,7 @@ export function SettingsScreen({ mode, onConnected }: Props) {
           </label>
           {error && <div className="error-box">{error}</div>}
           <button type="submit" disabled={connecting}>
-            {connecting ? "Conectando…" : "Conectar"}
+            {connecting ? t("settings.connecting") : t("settings.connect")}
           </button>
         </form>
       </div>
