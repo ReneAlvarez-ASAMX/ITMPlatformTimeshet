@@ -64,7 +64,12 @@ export function useTimers() {
       const key = String(task.workItemId);
       const existing = stateRef.current.timers[key];
       if (existing && existing.accumulatedSeconds > 0 && existing.date !== date) {
-        return { ok: false as const, reason: "stale-date" as const };
+        return {
+          ok: false as const,
+          reason: "stale-date" as const,
+          pendingDate: existing.date,
+          pendingSeconds: existing.accumulatedSeconds,
+        };
       }
       const record: TimerRecord = existing
         ? { ...existing, running: true, startedAt: Date.now(), date }
@@ -92,7 +97,12 @@ export function useTimers() {
       const key = String(task.workItemId);
       const existing = stateRef.current.timers[key];
       if (existing && existing.accumulatedSeconds > 0 && existing.date !== date && !existing.running) {
-        return { ok: false as const, reason: "stale-date" as const };
+        return {
+          ok: false as const,
+          reason: "stale-date" as const,
+          pendingDate: existing.date,
+          pendingSeconds: existing.accumulatedSeconds,
+        };
       }
       const record: TimerRecord = existing
         ? { ...existing, accumulatedSeconds: existing.accumulatedSeconds + seconds }

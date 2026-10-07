@@ -133,7 +133,7 @@ function ReviewRow({ item, existingSeconds, isRunning, error, onEditSeconds, onE
       <div className="review-row-info">
         <div className="review-task-name">{item.taskName}</div>
         <div className="review-task-meta">
-          {formatDayShort(item.date, locale)} · {t("review.alreadyReported", { time: formatShort(existingSeconds) })}
+          {item.projectName} · {formatDayShort(item.date, locale)} · {t("review.alreadyReported", { time: formatShort(existingSeconds) })}
         </div>
         {error && <div className="task-warning">{error}</div>}
       </div>

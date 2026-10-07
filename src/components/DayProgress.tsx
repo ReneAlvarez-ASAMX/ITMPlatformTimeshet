@@ -8,6 +8,10 @@ interface Props {
   reportedSeconds: number;
   /** Segundos de los temporizadores del día que aún no se han enviado a ITM Platform. */
   pendingSeconds: number;
+  /** Segundos sin enviar de otras fechas: no cuentan en el porcentaje, pero se muestran aparte. */
+  otherDaysSeconds?: number;
+  /** Abre la revisión de pendientes al pulsar «Otros días». */
+  onReviewOtherDays?: () => void;
 }
 
 /** "8h" en lugar de "8h 0m" para horas exactas. */
@@ -16,7 +20,13 @@ function formatHours(seconds: number): string {
   return text.endsWith(" 0m") ? text.slice(0, -3) : text;
 }
 
-export function DayProgress({ targetSeconds, reportedSeconds, pendingSeconds }: Props) {
+export function DayProgress({
+  targetSeconds,
+  reportedSeconds,
+  pendingSeconds,
+  otherDaysSeconds = 0,
+  onReviewOtherDays,
+}: Props) {
   const { t } = useI18n();
   const totalSeconds = reportedSeconds + pendingSeconds;
   const hasTarget = targetSeconds > 0;
@@ -57,6 +67,17 @@ export function DayProgress({ targetSeconds, reportedSeconds, pendingSeconds }: 
           <i className="dot pending" />
           {t("day.unsent", { time: formatHours(pendingSeconds) })}
         </span>
+        {otherDaysSeconds >= 30 && (
+          <button
+            type="button"
+            className="day-progress-other"
+            title={t("day.otherDaysHint")}
+            onClick={onReviewOtherDays}
+          >
+            <i className="dot other" />
+            {t("day.otherDays", { time: formatHours(otherDaysSeconds) })}
+          </button>
+        )}
         <span>
           {hasTarget ? t("day.workday", { time: formatHours(targetSeconds) }) : t("day.nonWorking")}
         </span>

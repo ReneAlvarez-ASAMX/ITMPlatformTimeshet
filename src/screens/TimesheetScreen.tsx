@@ -173,6 +173,27 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
     .filter((t) => t.date === selectedDate)
     .reduce((sum, t) => sum + timers.getElapsedSeconds(t.workItemId), 0);
 
+  // Tiempo sin enviar de otras fechas (cuenta en la barra inferior, no en el % del día).
+  const pendingOtherDaysSeconds = Object.values(timers.timers)
+    .filter((t) => t.date !== selectedDate)
+    .reduce((sum, t) => sum + timers.getElapsedSeconds(t.workItemId), 0);
+
+  // Totales de la semana mostrada: lo ya reportado en ITM y el tiempo sin enviar de esas fechas.
+  const weekReportedSeconds = useMemo(() => {
+    if (!data) return 0;
+    let total = 0;
+    for (const project of data.TimeReports) {
+      for (const wi of project.WorkItems) {
+        for (const entry of wi.TimeEntries) total += hhmmToSeconds(entry.ReportedHours);
+      }
+    }
+    return total;
+  }, [data]);
+
+  const weekPendingSeconds = Object.values(timers.timers)
+    .filter((t) => t.date >= startIso && t.date <= endIso)
+    .reduce((sum, t) => sum + timers.getElapsedSeconds(t.workItemId), 0);
+
   async function handleConfirmSync() {
     const result = await submit(pending, (ids) => timers.markSynced(ids));
     if (result.successCount > 0) refetch();
@@ -245,6 +266,8 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
             targetSeconds={workdaySeconds(selectedDate)}
             reportedSeconds={reportedDaySeconds}
             pendingSeconds={pendingDaySeconds}
+            otherDaysSeconds={pendingOtherDaysSeconds}
+            onReviewOtherDays={() => setReviewOpen(true)}
           />
         </div>
         <button
@@ -314,6 +337,7 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
               onToggleProject={toggleProject}
               selectedDate={selectedDate}
               isToday={isToday}
+              onReviewPending={() => setReviewOpen(true)}
             />
           </>
         )}
@@ -325,6 +349,9 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
         lastError={lastError}
         itemErrors={itemErrors}
         onReview={() => setReviewOpen(true)}
+        weekStart={weekStart}
+        weekReportedSeconds={weekReportedSeconds}
+        weekPendingSeconds={weekPendingSeconds}
       />
 
       <PoweredBy />

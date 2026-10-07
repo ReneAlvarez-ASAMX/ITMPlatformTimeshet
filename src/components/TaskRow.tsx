@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { WorkItem } from "../../electron/types";
 import type { TaskRef } from "../hooks/useTimers";
 import { useI18n } from "../i18n";
-import type { MessageKey } from "../../electron/i18n";
 import { Icon } from "./Icon";
 import {
   formatClock,
@@ -12,7 +11,15 @@ import {
   secondsToHHMM,
   todayAtTime,
   timeOfDay,
+  todayStr,
 } from "../timeFormat";
+
+interface ActionResult {
+  ok: boolean;
+  reason?: string;
+  pendingDate?: string;
+  pendingSeconds?: number;
+}
 
 interface Props {
   workItem: WorkItem;
@@ -23,15 +30,19 @@ interface Props {
   isRunning: boolean;
   startedAt: number | null;
   elapsedSeconds: number;
+  /** Fecha (YYYY-MM-DD) a la que corresponde el tiempo pendiente de esta tarea, si lo hay. */
+  pendingDate: string | null;
   comment: string;
   isFavorite: boolean;
   onToggleFavorite: (workItemId: number) => void;
-  onStart: (task: TaskRef, date: string) => { ok: boolean; reason?: string };
+  onStart: (task: TaskRef, date: string) => ActionResult;
   onPause: (workItemId: number) => void;
-  onAddManual: (task: TaskRef, seconds: number, date: string) => { ok: boolean; reason?: string };
+  onAddManual: (task: TaskRef, seconds: number, date: string) => ActionResult;
   onEditAccumulated: (workItemId: number, seconds: number) => { ok: boolean };
   onSetComment: (workItemId: number, comment: string) => void;
   onAdjustStart: (workItemId: number, newStartedAt: number) => { ok: boolean };
+  /** Abre el panel con todo el tiempo pendiente de enviar. */
+  onReviewPending: () => void;
 }
 
 export function TaskRow({
@@ -43,6 +54,7 @@ export function TaskRow({
   isRunning,
   startedAt,
   elapsedSeconds,
+  pendingDate,
   comment,
   isFavorite,
   onToggleFavorite,
@@ -52,9 +64,11 @@ export function TaskRow({
   onEditAccumulated,
   onSetComment,
   onAdjustStart,
+  onReviewPending,
 }: Props) {
   const { t, locale } = useI18n();
   const [warning, setWarning] = useState<string | null>(null);
+  const [blockedTried, setBlockedTried] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [manualValue, setManualValue] = useState("");
   const [noteDraft, setNoteDraft] = useState(comment);
@@ -67,6 +81,15 @@ export function TaskRow({
   const reportedSeconds = hhmmToSeconds(dayEntry?.ReportedHours);
   const canTrackTime = dayEntry?.TimeEntryAllowed !== false;
   const dayLabel = isToday ? t("header.today") : formatDayShort(selectedDate, locale);
+  // Fecha a la que pertenece el tiempo sin enviar de esta tarea, dicha siempre de forma explícita.
+  const pendingLabel = !pendingDate
+    ? dayLabel
+    : pendingDate === todayStr()
+    ? t("header.today")
+    : formatDayShort(pendingDate, locale);
+  // Con tiempo pendiente de otra fecha no se puede registrar más en esta tarea hasta enviarlo.
+  const blockedByOtherDay =
+    Boolean(pendingDate) && pendingDate !== selectedDate && elapsedSeconds > 0 && !isRunning;
   const taskRef: TaskRef = {
     workItemId: workItem.WorkItemId,
     entityId,
@@ -80,7 +103,8 @@ export function TaskRow({
       return;
     }
     const result = onStart(taskRef, selectedDate);
-    setWarning(result.ok ? null : staleMessage(t, result.reason));
+    if (!result.ok && result.reason === "stale-date") setBlockedTried(true);
+    setWarning(result.ok || result.reason === "stale-date" ? null : t("task.error.generic"));
   }
 
   function handleManualSubmit(e: React.FormEvent) {
@@ -93,7 +117,8 @@ export function TaskRow({
       setShowManual(false);
       setWarning(null);
     } else {
-      setWarning(staleMessage(t, result.reason));
+      if (result.reason === "stale-date") setBlockedTried(true);
+      setWarning(result.reason === "stale-date" ? null : t("task.error.generic"));
     }
   }
 
@@ -154,9 +179,20 @@ export function TaskRow({
         </div>
         <div className="task-meta">
           {t("task.reported", { day: dayLabel, time: formatShort(reportedSeconds) })}
-          {elapsedSeconds > 0 && t("task.unsentSuffix", { time: formatShort(elapsedSeconds) })}
+          {elapsedSeconds > 0 &&
+            t("task.unsentOn", { time: formatShort(elapsedSeconds), date: pendingLabel })}
         </div>
         {warning && <div className="task-warning">{warning}</div>}
+        {blockedByOtherDay && (
+          <div className={`task-note ${blockedTried ? "attempted" : ""}`}>
+            <span>
+              {t("task.otherDayNote", { time: formatShort(elapsedSeconds), date: pendingLabel })}
+            </span>
+            <button className="btn-link" onClick={onReviewPending}>
+              {t("sync.review")}
+            </button>
+          </div>
+        )}
         {!canTrackTime && !isRunning && (
           <div className="task-warning">{t("task.noTimeAllowed")}</div>
         )}
@@ -260,8 +296,4 @@ export function TaskRow({
       </div>
     </div>
   );
-}
-
-function staleMessage(t: (key: MessageKey) => string, reason?: string): string {
-  return reason === "stale-date" ? t("task.error.stale") : t("task.error.generic");
 }
