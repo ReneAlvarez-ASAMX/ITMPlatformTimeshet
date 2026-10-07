@@ -1243,6 +1243,17 @@ button:disabled {
   font-size: 12px;
 }
 
+.review-date-warning {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  border-left: 3px solid var(--itm-orange);
+  border-radius: 3px;
+  padding: 3px 8px;
+  margin-top: 2px;
+}
+
 .review-total {
   font-size: 12px;
   font-weight: 600;

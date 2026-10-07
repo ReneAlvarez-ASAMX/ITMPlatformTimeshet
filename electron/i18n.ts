@@ -116,6 +116,7 @@ const es = {
   "review.alreadyReported": "Ya reportado: {time}",
   "review.pending": "Pendiente",
   "review.running": "{time} (en marcha)",
+  "review.otherDate": "Estas horas se registrarán el {date}, no hoy.",
   "review.total": "Total a enviar: {time}",
 
   // Destacadas del día
@@ -292,6 +293,7 @@ const en: Dictionary = {
   "review.alreadyReported": "Already reported: {time}",
   "review.pending": "Pending",
   "review.running": "{time} (running)",
+  "review.otherDate": "These hours will be recorded on {date}, not today.",
   "review.total": "Total to send: {time}",
 
   "fav.title": "Today's starred tasks",
@@ -453,6 +455,7 @@ const pt: Dictionary = {
   "review.alreadyReported": "Já reportado: {time}",
   "review.pending": "Pendente",
   "review.running": "{time} (em andamento)",
+  "review.otherDate": "Estas horas serão registradas em {date}, não hoje.",
   "review.total": "Total a enviar: {time}",
 
   "fav.title": "Tarefas destacadas de hoje",

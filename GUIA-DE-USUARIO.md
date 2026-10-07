@@ -2,7 +2,7 @@
 
 Aplicación de escritorio para registrar el tiempo que dedicas a tus tareas de **ITM Platform**. Cronometras mientras trabajas (o añades el tiempo a mano) y, cuando quieras, envías las horas a ITM Platform con un clic.
 
-Versión de esta guía: 1.1.2 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
+Versión de esta guía: 1.1.3 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
 
 ## Contenido
 
@@ -188,6 +188,7 @@ El tiempo que cronometras o añades queda **solo en tu equipo** hasta que lo env
    - **Pendiente**: lo que vas a añadir (editable si el temporizador está en pausa),
    - una **nota** opcional,
    - **Total a enviar**: *ya reportado + pendiente*.
+   - **Fecha**: cada línea indica el día al que se registrarán las horas. Si no es hoy, aparece un **aviso naranja** (*"Estas horas se registrarán el 05 oct, no hoy"*). **Compruébalo siempre antes de confirmar**: ITM Platform guardará las horas en esa fecha.
 3. Revisa y ajusta lo que necesites.
 4. Pulsa **Confirmar y enviar**.
 
