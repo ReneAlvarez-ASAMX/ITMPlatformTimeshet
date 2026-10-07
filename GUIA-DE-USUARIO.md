@@ -2,7 +2,7 @@
 
 Aplicación de escritorio para registrar el tiempo que dedicas a tus tareas de **ITM Platform**. Cronometras mientras trabajas (o añades el tiempo a mano) y, cuando quieras, envías las horas a ITM Platform con un clic.
 
-Versión de esta guía: 1.1.1 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
+Versión de esta guía: 1.1.2 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
 
 ## Contenido
 
