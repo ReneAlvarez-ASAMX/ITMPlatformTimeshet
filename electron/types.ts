@@ -176,3 +176,36 @@ export interface AutoLaunchSettings {
   // false en desarrollo (app sin empaquetar): registrar electron.exe como programa de inicio no tiene sentido.
   supported: boolean;
 }
+
+// --- Registro local de envíos (CSV) para reconciliar con ITM Platform ---
+
+/** Una tarea y fecha incluida en un envío, con todo lo necesario para auditarla. */
+export interface SendAuditItem {
+  workItemId: number;
+  entityId: number; // proyecto
+  projectName: string;
+  taskName: string;
+  date: string; // YYYY-MM-DD: día al que se imputan las horas
+  existingMinutes: number; // lo que ITM Platform ya tenía para esa tarea y día
+  addedMinutes: number; // lo que se suma desde la app
+  sentMinutes: number; // el total que se envía (existente + sumado)
+  comment: string;
+}
+
+export type SendLogStatus = "OK" | "ERROR" | "UNCONFIRMED";
+
+export interface SendLogEntry {
+  batchId: string;
+  sentAt: string; // "YYYY-MM-DD HH:MM:SS" local
+  status: SendLogStatus;
+  projectName: string;
+  projectId: number;
+  taskName: string;
+  taskId: number;
+  workDate: string;
+  existingMinutes: number;
+  addedMinutes: number;
+  sentMinutes: number;
+  note: string;
+  message: string;
+}

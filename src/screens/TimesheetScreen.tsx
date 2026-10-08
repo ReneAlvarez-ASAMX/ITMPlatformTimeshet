@@ -11,6 +11,7 @@ import { UpdateControl } from "../components/UpdateControl";
 import { BrandMark, Icon } from "../components/Icon";
 import { DayProgress } from "../components/DayProgress";
 import { PoweredBy } from "../components/PoweredBy";
+import { SendReport } from "../components/SendReport";
 import { useI18n } from "../i18n";
 import { useSecretTaps } from "../hooks/useSecretTaps";
 import { switchMode } from "../modeSwitch";
@@ -61,6 +62,7 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
   const [miniMode, setMiniModeState] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [dailyFavoritesOpen, setDailyFavoritesOpen] = useState(false);
   const onSecretTap = useSecretTaps(() => switchMode(mode.demo));
   const startIso = toIsoDate(weekStart);
@@ -242,6 +244,10 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
           </div>
           <ReminderSettingsControl />
           <AutoLaunchControl />
+          <button className="header-btn" onClick={() => setReportOpen(true)} title={t("report.title")}>
+            <Icon name="file-text" />
+            <span className="lbl">{t("report.open")}</span>
+          </button>
           <UpdateControl />
           <button className="header-btn icon-only" onClick={() => setMini(true)} title={t("header.miniMode")}>
             <Icon name="minimize-2" />
@@ -364,6 +370,8 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
           onClose={() => setDailyFavoritesOpen(false)}
         />
       )}
+
+      {reportOpen && <SendReport onClose={() => setReportOpen(false)} />}
 
       {reviewOpen && (
         <SyncReviewPanel

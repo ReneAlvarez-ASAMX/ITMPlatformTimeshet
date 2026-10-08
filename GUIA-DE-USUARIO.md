@@ -2,7 +2,7 @@
 
 Aplicación de escritorio para registrar el tiempo que dedicas a tus tareas de **ITM Platform**. Cronometras mientras trabajas (o añades el tiempo a mano) y, cuando quieras, envías las horas a ITM Platform con un clic.
 
-Versión de esta guía: 1.1.2 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
+Versión de esta guía: 1.2.0 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
 
 ## Contenido
 
@@ -188,6 +188,7 @@ El tiempo que cronometras o añades queda **solo en tu equipo** hasta que lo env
    - **Pendiente**: lo que vas a añadir (editable si el temporizador está en pausa),
    - una **nota** opcional,
    - **Total a enviar**: *ya reportado + pendiente*.
+   - **Fecha**: cada línea indica el día al que se registrarán las horas. Si no es hoy, aparece un **aviso naranja** (*"Estas horas se registrarán el 05 oct, no hoy"*). **Compruébalo siempre antes de confirmar**: ITM Platform guardará las horas en esa fecha.
 3. Revisa y ajusta lo que necesites.
 4. Pulsa **Confirmar y enviar**.
 
@@ -200,6 +201,22 @@ Detalles importantes:
 - Si alguna tarea falla (por ejemplo, el día está cerrado o la tarea ya no admite horas), se muestra el motivo junto a ella. Las demás se envían con normalidad y la que falló conserva su tiempo para que puedas corregirla o reintentarlo.
 
 ---
+
+### Informe de envíos y registro local (CSV)
+
+Antes de enviar nada a ITM Platform, la aplicación **anota en un archivo CSV de tu equipo** todo lo que va a enviar y, después, el resultado. Sirve para **reconciliar** lo que has enviado con lo que figura en ITM Platform. Si el archivo no se pudiera guardar, **no se envía nada**.
+
+Cada envío deja una línea por tarea y fecha con: **fecha y hora del envío**, **proyecto**, **tarea**, **fecha de captura** (el día al que se registran las horas), **horas que ya había en ITM**, **horas añadidas**, **total enviado**, **nota** y el **resultado** (*Enviado*, *Error* con su motivo, o *Sin confirmar*).
+
+Para consultarlo pulsa **Informe** (icono de documento, en la cabecera):
+
+- **Filtros:** buscador (proyecto, tarea o nota; admite varias palabras), periodo (últimos 7 días, 30 días o todo) y estado.
+- **Fecha de captura resaltada en naranja** cuando las horas se registraron en un día distinto del día del envío. Es la primera pista cuando algo no cuadra.
+- **Sin confirmar:** el envío empezó pero la app no llegó a guardar la respuesta (por ejemplo, si se cerró). Comprueba esas horas en ITM Platform.
+- **Total añadido** de las líneas enviadas, según los filtros aplicados.
+- **Exportar CSV** y **Abrir ubicación del archivo** (`send-log.csv`, en la carpeta de datos de la aplicación). El archivo usa **punto y coma** como separador y se abre directamente en Excel.
+
+Solo se conservan los envíos de los **últimos 2 meses**; los anteriores se eliminan solos para que el archivo no crezca.
 
 ## 8. Encontrar tus tareas: búsqueda, filtros y destacadas
 

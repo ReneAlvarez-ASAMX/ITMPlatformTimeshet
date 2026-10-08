@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppState, TimerRecord } from "../../electron/types";
 import { emptyAppState } from "../../electron/types";
 import { useI18n } from "../i18n";
+import { planManualAdd, planStart } from "../timerLogic";
 import { formatShort, todayStr } from "../timeFormat";
 
 export interface TaskRef {
@@ -62,29 +63,9 @@ export function useTimers() {
   const start = useCallback(
     (task: TaskRef, date: string) => {
       const key = String(task.workItemId);
-      const existing = stateRef.current.timers[key];
-      if (existing && existing.accumulatedSeconds > 0 && existing.date !== date) {
-        return {
-          ok: false as const,
-          reason: "stale-date" as const,
-          pendingDate: existing.date,
-          pendingSeconds: existing.accumulatedSeconds,
-        };
-      }
-      const record: TimerRecord = existing
-        ? { ...existing, running: true, startedAt: Date.now(), date }
-        : {
-            workItemId: task.workItemId,
-            entityId: task.entityId,
-            taskName: task.taskName,
-            projectName: task.projectName,
-            date,
-            startedAt: Date.now(),
-            accumulatedSeconds: 0,
-            running: true,
-            comment: "",
-          };
-      persist({ timers: { ...stateRef.current.timers, [key]: record } });
+      const plan = planStart(stateRef.current.timers[key], task, date, Date.now());
+      if (!plan.ok) return plan;
+      persist({ timers: { ...stateRef.current.timers, [key]: plan.record } });
       return { ok: true as const };
     },
     [persist]
@@ -93,31 +74,10 @@ export function useTimers() {
   /** Añade tiempo capturado manualmente (sin usar el cronómetro) al acumulado pendiente del día indicado. */
   const addManualSeconds = useCallback(
     (task: TaskRef, seconds: number, date: string) => {
-      if (seconds <= 0) return { ok: false as const, reason: "invalid" as const };
       const key = String(task.workItemId);
-      const existing = stateRef.current.timers[key];
-      if (existing && existing.accumulatedSeconds > 0 && existing.date !== date && !existing.running) {
-        return {
-          ok: false as const,
-          reason: "stale-date" as const,
-          pendingDate: existing.date,
-          pendingSeconds: existing.accumulatedSeconds,
-        };
-      }
-      const record: TimerRecord = existing
-        ? { ...existing, accumulatedSeconds: existing.accumulatedSeconds + seconds }
-        : {
-            workItemId: task.workItemId,
-            entityId: task.entityId,
-            taskName: task.taskName,
-            projectName: task.projectName,
-            date,
-            startedAt: null,
-            accumulatedSeconds: seconds,
-            running: false,
-            comment: "",
-          };
-      persist({ timers: { ...stateRef.current.timers, [key]: record } });
+      const plan = planManualAdd(stateRef.current.timers[key], task, seconds, date, Date.now());
+      if (!plan.ok) return plan;
+      persist({ timers: { ...stateRef.current.timers, [key]: plan.record } });
       return { ok: true as const };
     },
     [persist]

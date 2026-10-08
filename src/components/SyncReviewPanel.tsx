@@ -3,7 +3,7 @@ import type { useTimers } from "../hooks/useTimers";
 import type { PendingItem } from "../hooks/useSync";
 import { fetchExistingSeconds } from "../hooks/useSync";
 import { useI18n } from "../i18n";
-import { formatDayShort, formatShort, hhmmToSeconds, secondsToHHMM } from "../timeFormat";
+import { formatDayShort, formatShort, hhmmToSeconds, secondsToHHMM, todayStr } from "../timeFormat";
 
 interface Props {
   pending: PendingItem[];
@@ -136,6 +136,11 @@ function ReviewRow({ item, existingSeconds, isRunning, error, onEditSeconds, onE
           {item.projectName} · {formatDayShort(item.date, locale)} · {t("review.alreadyReported", { time: formatShort(existingSeconds) })}
         </div>
         {error && <div className="task-warning">{error}</div>}
+        {item.date !== todayStr() && (
+          <div className="review-date-warning">
+            {t("review.otherDate", { date: formatDayShort(item.date, locale) })}
+          </div>
+        )}
       </div>
       <div className="review-row-fields">
         <label className="review-field">
