@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { TimeReportSubmitEntry, TimerRecord } from "../../electron/types";
+import type { SendAuditItem, TimeReportSubmitEntry, TimerRecord } from "../../electron/types";
 import { useI18n } from "../i18n";
 import { hhmmToSeconds, secondsToHHMM } from "../timeFormat";
 
@@ -74,19 +74,34 @@ export function useSync() {
 
         const existingByKey = await fetchExistingSeconds(minDate, maxDate);
 
-        const entries: TimeReportSubmitEntry[] = pending.map((p) => {
+        const entries: TimeReportSubmitEntry[] = [];
+        // Datos para el registro local de envíos (CSV): qué había, qué se suma y qué se envía.
+        const audit: SendAuditItem[] = [];
+        for (const p of pending) {
           const existingSeconds = existingByKey.get(`${p.workItemId}_${p.date}`) ?? 0;
-          const combined = existingSeconds + p.seconds;
-          return {
+          const reportedHours = secondsToHHMM(existingSeconds + p.seconds);
+          const comment = p.comment.trim();
+          entries.push({
             EntityId: p.entityId,
             WorkItemId: p.workItemId,
             Date: p.date,
-            ReportedHours: secondsToHHMM(combined),
-            ...(p.comment.trim() ? { UserComment: p.comment.trim() } : {}),
-          };
-        });
+            ReportedHours: reportedHours,
+            ...(comment ? { UserComment: comment } : {}),
+          });
+          audit.push({
+            workItemId: p.workItemId,
+            entityId: p.entityId,
+            projectName: p.projectName,
+            taskName: p.taskName,
+            date: p.date,
+            existingMinutes: Math.round(existingSeconds / 60),
+            addedMinutes: Math.round(p.seconds / 60),
+            sentMinutes: Math.round(hhmmToSeconds(reportedHours) / 60),
+            comment,
+          });
+        }
 
-        const res = await window.itm.submitTimeEntries({ TimeReports: entries });
+        const res = await window.itm.submitTimeEntries({ TimeReports: entries }, audit);
 
         const failedIds = new Set<number>();
         if (res.Errors && res.Errors.length > 0) {
