@@ -6,6 +6,7 @@ import * as itm from "./itmClient";
 import * as store from "./store";
 import * as updater from "./updater";
 import * as sendLog from "./sendLog";
+import * as appLog from "./appLog";
 import {
   DEFAULT_LANGUAGE,
   getCurrentLanguage,
@@ -90,12 +91,84 @@ if (!gotSingleInstanceLock) {
   app.quit();
 } else {
   app.on("second-instance", () => {
+    appLog.info("app", "Se intentó abrir una segunda copia: se enfoca la ventana existente");
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
     }
   });
+}
+
+// Errores que nadie captura: se anotan en el registro para poder diagnosticarlos.
+process.on("uncaughtException", (err) => appLog.error("main", "Excepción no controlada", err));
+process.on("unhandledRejection", (reason) => appLog.error("main", "Promesa rechazada sin controlar", reason));
+app.on("child-process-gone", (_e, details) =>
+  appLog.error("main", `Proceso interno terminado (${details.type}): ${details.reason}`, details)
+);
+
+// Tras un fallo visible (pantalla en blanco, proceso de la interfaz caído) se ofrece guardar el registro.
+let diagnosticsOffered = false;
+const BLANK_CHECK_DELAY_MS = 6_000;
+
+/** Guarda el registro de diagnóstico donde el usuario elija (por defecto, el escritorio). */
+async function exportDiagnostics(): Promise<{ ok: boolean; path?: string; cancelled?: boolean }> {
+  const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+  const options: Electron.SaveDialogOptions = {
+    title: tr("diag.saveTitle"),
+    defaultPath: path.join(
+      app.getPath("desktop"),
+      `diagnostico-itm-timesheet-${new Date().toISOString().slice(0, 10)}.txt`
+    ),
+    filters: [{ name: "TXT", extensions: ["txt"] }],
+  };
+  try {
+    const target = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
+    if (target.canceled || !target.filePath) return { ok: false, cancelled: true };
+    await fsp.writeFile(target.filePath, await appLog.buildReport(), "utf-8");
+    appLog.info("diag", "Informe de diagnóstico guardado");
+    shell.showItemInFolder(target.filePath);
+    return { ok: true, path: target.filePath };
+  } catch (err) {
+    appLog.error("diag", "No se pudo guardar el informe de diagnóstico", err);
+    return { ok: false };
+  }
+}
+
+async function offerDiagnostics(reason: string) {
+  if (diagnosticsOffered || !mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
+  diagnosticsOffered = true;
+  appLog.warn("diag", `Se ofrece guardar el registro: ${reason}`);
+  const { response } = await dialog.showMessageBox(mainWindow, {
+    type: "warning",
+    title: tr("diag.problemTitle"),
+    message: tr("diag.problemTitle"),
+    detail: tr("diag.problemBody"),
+    buttons: [tr("diag.button"), tr("diag.reload"), tr("common.close")],
+    defaultId: 0,
+    cancelId: 2,
+  });
+  if (response === 0) await exportDiagnostics();
+  else if (response === 1) mainWindow?.webContents.reload();
+}
+
+/** Comprueba que la interfaz haya pintado algo; si la ventana sigue en blanco, lo anota y avisa. */
+async function checkWindowNotBlank() {
+  const win = mainWindow;
+  if (!win || win.isDestroyed()) return;
+  try {
+    const children: number = await win.webContents.executeJavaScript(
+      `document.getElementById("root")?.childElementCount ?? -1`
+    );
+    if (children > 0) {
+      appLog.info("window", "La interfaz se mostró correctamente");
+      return;
+    }
+    appLog.error("window", `Ventana en blanco: el contenedor de la interfaz está vacío (${children})`);
+    await offerDiagnostics("ventana en blanco");
+  } catch (err) {
+    appLog.error("window", "No se pudo comprobar si la ventana está en blanco", err);
+  }
 }
 
 function iconPath(): string {
@@ -118,6 +191,38 @@ function createWindow() {
       sandbox: true,
     },
   });
+
+  const wc = mainWindow.webContents;
+  wc.on("did-finish-load", () => {
+    appLog.info("window", "Interfaz cargada");
+    setTimeout(checkWindowNotBlank, BLANK_CHECK_DELAY_MS);
+  });
+  wc.on("did-fail-load", (_e, code, description, url, isMainFrame) => {
+    if (code === -3) return; // carga cancelada (p. ej. una recarga)
+    appLog.error("window", `Falló la carga${isMainFrame ? "" : " (subrecurso)"}: ${description} (${code})`, url);
+    if (isMainFrame) offerDiagnostics("falló la carga de la interfaz");
+  });
+  wc.on("render-process-gone", (_e, details) => {
+    appLog.error("window", `Proceso de la interfaz caído: ${details.reason} (código ${details.exitCode})`);
+    offerDiagnostics("proceso de la interfaz caído");
+  });
+  wc.on("preload-error", (_e, preloadPath, err) =>
+    appLog.error("window", `Falló el script de precarga ${preloadPath}`, err)
+  );
+  // Electron 33 entrega (event, level, message, line, sourceId); versiones posteriores, un único objeto.
+  wc.on("console-message", (...args: any[]) => {
+    const details = typeof args[0]?.message === "string" ? args[0] : null;
+    const level = details ? ({ debug: 0, info: 1, warning: 2, error: 3 } as Record<string, number>)[details.level] ?? 1 : args[1];
+    if (typeof level !== "number" || level < 2) return;
+    const message = details ? details.message : args[2];
+    const source = details ? details.sourceId : args[4];
+    const line = details ? details.lineNumber : args[3];
+    appLog.log(level >= 3 ? "ERROR" : "WARN", "consola", String(message), `${source}:${line}`);
+  });
+  mainWindow.on("unresponsive", () => appLog.warn("window", "La ventana no responde"));
+  mainWindow.on("responsive", () => appLog.info("window", "La ventana vuelve a responder"));
+  mainWindow.on("show", () => appLog.info("window", "Ventana mostrada"));
+  mainWindow.on("hide", () => appLog.info("window", "Ventana oculta (bandeja)"));
 
   if (VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(VITE_DEV_SERVER_URL);
@@ -185,6 +290,13 @@ function rebuildTray() {
   tray.setToolTip(trayStatusLabel ? `${appTitle()} — ${trayStatusLabel}` : appTitle());
   const menu = Menu.buildFromTemplate([
     { label: tr("tray.show"), click: () => mainWindow?.show() },
+    {
+      label: tr("tray.diagnostics"),
+      click: () => {
+        mainWindow?.show();
+        exportDiagnostics();
+      },
+    },
     { type: "separator" },
     {
       label: tr("tray.quit"),
@@ -318,13 +430,17 @@ function setAutoLaunch(enabled: boolean): AutoLaunchSettings {
 
 app.on("before-quit", () => {
   isQuitting = true;
+  appLog.info("app", "Cierre de la aplicación");
 });
 
 app.whenReady().then(async () => {
   app.setAppUserModelId("tech.actualsolutions.itmplatformtimesheet");
   demoLocked = process.argv.includes("--demo");
+  appLog.logStartup({ iniciadaOculta: startedHidden });
+  appLog.logDisplays();
   demoMode = demoLocked || (await store.loadDemoFlag());
   store.setProfile(demoMode);
+  appLog.info("app", `Entorno: ${demoMode ? "demo" : "producción"}`);
   sendLog.purgeOld(store.sendLogPath()).catch((err) => console.warn("[sendLog] purga:", err));
   setCurrentLanguage(
     (await store.loadLanguage()) ?? parseLanguage(app.getLocale()) ?? DEFAULT_LANGUAGE
@@ -334,6 +450,7 @@ app.whenReady().then(async () => {
   cachedState = await store.loadAppState();
   restartReminderTimer(await store.loadReminderSettings());
   setInterval(checkActiveTimers, ACTIVE_CHECK_TICK_MS);
+  appLog.info("app", "Inicialización completada");
   updater.initUpdater({
     getWindow: () => mainWindow,
     onNewVersion: (version) =>
@@ -351,11 +468,47 @@ app.whenReady().then(async () => {
 
 // ---------- IPC ----------
 
+// Llamadas de la interfaz que se repiten constantemente: solo se anotan si fallan.
+const QUIET_CHANNELS = new Set([
+  "state:save",
+  "state:load",
+  "tray:updateStatus",
+  "updater:getStatus",
+  "language:get",
+  "mode:get",
+]);
+
+/** Como ipcMain.handle, pero deja en el registro cada llamada (sin sus datos) y cualquier error. */
+function handle(channel: string, listener: Parameters<typeof ipcMain.handle>[1]) {
+  ipcMain.handle(channel, async (event, ...args) => {
+    const started = Date.now();
+    try {
+      const result = await listener(event, ...args);
+      if (!QUIET_CHANNELS.has(channel)) appLog.info("ipc", `${channel} correcto (${Date.now() - started} ms)`);
+      return result;
+    } catch (err) {
+      appLog.error("ipc", `${channel} falló (${Date.now() - started} ms)`, err);
+      throw err;
+    }
+  });
+}
+
+// Errores y avisos de la interfaz (React): llegan por el puente del preload. Con tope para no inundar el archivo.
+let rendererEntries = 0;
+const MAX_RENDERER_ENTRIES = 300;
+ipcMain.on("log:renderer", (_e, level: unknown, message: unknown, detail: unknown) => {
+  if (rendererEntries++ >= MAX_RENDERER_ENTRIES) return;
+  const lvl = level === "error" ? "ERROR" : level === "warn" ? "WARN" : "INFO";
+  appLog.log(lvl, "interfaz", String(message).slice(0, 1000), typeof detail === "string" ? detail : undefined);
+});
+
+handle("diag:export", async () => exportDiagnostics());
+
 function requireSession() {
   return store.loadSession();
 }
 
-ipcMain.handle("itm:login", async (_e, creds: Credentials) => {
+handle("itm:login", async (_e, creds: Credentials) => {
   // En modo demo la empresa es fija, venga lo que venga del formulario.
   const company = demoMode ? DEMO_COMPANY : creds.company;
   const res = await itm.login(currentHost(), company, creds.apiKey);
@@ -364,19 +517,19 @@ ipcMain.handle("itm:login", async (_e, creds: Credentials) => {
   return res;
 });
 
-ipcMain.handle("itm:logout", async () => {
+handle("itm:logout", async () => {
   await store.clearCredentials();
   await store.clearSession();
 });
 
-ipcMain.handle("itm:getStoredAccount", async () => {
+handle("itm:getStoredAccount", async () => {
   const creds = await store.loadCredentials();
   const session = await store.loadSession();
   if (!creds || !session) return null;
   return { company: creds.company, userId: session.userId };
 });
 
-ipcMain.handle(
+handle(
   "itm:getTimesheet",
   async (_e, args: { startDate: string; endDate: string }) => {
     const creds = await store.loadCredentials();
@@ -407,7 +560,7 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle(
+handle(
   "itm:submitTimeEntries",
   async (
     _e,
@@ -437,9 +590,9 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("sendlog:list", async (): Promise<SendLogEntry[]> => sendLog.readEntries(store.sendLogPath()));
+handle("sendlog:list", async (): Promise<SendLogEntry[]> => sendLog.readEntries(store.sendLogPath()));
 
-ipcMain.handle("sendlog:reveal", async () => {
+handle("sendlog:reveal", async () => {
   const file = store.sendLogPath();
   try {
     await fsp.access(file);
@@ -449,7 +602,7 @@ ipcMain.handle("sendlog:reveal", async () => {
   }
 });
 
-ipcMain.handle("sendlog:export", async (): Promise<{ ok: boolean; path?: string }> => {
+handle("sendlog:export", async (): Promise<{ ok: boolean; path?: string }> => {
   const source = store.sendLogPath();
   const target = await dialog.showSaveDialog(mainWindow!, {
     defaultPath: `informe-envios-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -499,12 +652,12 @@ async function refreshLanguage(): Promise<Language> {
   return getCurrentLanguage();
 }
 
-ipcMain.handle("language:get", async (): Promise<Language> => getCurrentLanguage());
-ipcMain.handle("language:refresh", async (): Promise<Language> => refreshLanguage());
+handle("language:get", async (): Promise<Language> => getCurrentLanguage());
+handle("language:refresh", async (): Promise<Language> => refreshLanguage());
 
-ipcMain.handle("mode:get", async (): Promise<AppMode> => currentMode());
+handle("mode:get", async (): Promise<AppMode> => currentMode());
 
-ipcMain.handle("mode:set", async (_e, demo: boolean): Promise<{ ok: boolean }> => {
+handle("mode:set", async (_e, demo: boolean): Promise<{ ok: boolean }> => {
   // Con --demo el modo está bloqueado, y con un temporizador en marcha no se cambia de entorno.
   if (demoLocked || hasRunningTimer()) return { ok: false };
   demoMode = demo === true;
@@ -520,42 +673,42 @@ ipcMain.handle("mode:set", async (_e, demo: boolean): Promise<{ ok: boolean }> =
   return { ok: true };
 });
 
-ipcMain.handle("state:load", async (): Promise<AppState> => {
+handle("state:load", async (): Promise<AppState> => {
   return store.loadAppState();
 });
 
-ipcMain.handle("state:save", async (_e, state: AppState) => {
+handle("state:save", async (_e, state: AppState) => {
   cachedState = state;
   syncActiveCheckTracking();
   await store.saveAppState(state);
 });
 
-ipcMain.handle("tray:updateStatus", async (_e, label: string | undefined) => {
+handle("tray:updateStatus", async (_e, label: string | undefined) => {
   updateTrayMenu(label);
 });
 
-ipcMain.handle("window:setMiniMode", async (_e, enabled: boolean) => {
+handle("window:setMiniMode", async (_e, enabled: boolean) => {
   setMiniMode(enabled);
 });
 
-ipcMain.handle("reminder:getSettings", async (): Promise<ReminderSettings> => {
+handle("reminder:getSettings", async (): Promise<ReminderSettings> => {
   return store.loadReminderSettings();
 });
 
-ipcMain.handle("reminder:setSettings", async (_e, settings: ReminderSettings) => {
+handle("reminder:setSettings", async (_e, settings: ReminderSettings) => {
   await store.saveReminderSettings(settings);
   restartReminderTimer(settings);
 });
 
-ipcMain.handle("updater:getStatus", async () => updater.getUpdateStatus());
-ipcMain.handle("updater:check", async () => updater.checkForUpdates(true));
-ipcMain.handle("updater:download", async () => updater.downloadUpdate());
-ipcMain.handle("updater:install", async () => updater.installUpdate());
+handle("updater:getStatus", async () => updater.getUpdateStatus());
+handle("updater:check", async () => updater.checkForUpdates(true));
+handle("updater:download", async () => updater.downloadUpdate());
+handle("updater:install", async () => updater.installUpdate());
 
-ipcMain.handle("autoLaunch:get", async (): Promise<AutoLaunchSettings> => {
+handle("autoLaunch:get", async (): Promise<AutoLaunchSettings> => {
   return getAutoLaunch();
 });
 
-ipcMain.handle("autoLaunch:set", async (_e, enabled: boolean): Promise<AutoLaunchSettings> => {
+handle("autoLaunch:set", async (_e, enabled: boolean): Promise<AutoLaunchSettings> => {
   return setAutoLaunch(enabled);
 });
