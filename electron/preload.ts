@@ -80,6 +80,18 @@ const api = {
     return () => ipcRenderer.removeListener("updater:status", listener);
   },
 
+  /** Anota en el registro local un evento de la interfaz (errores, avisos). Nunca lanza. */
+  logRenderer: (level: "info" | "warn" | "error", message: string, detail?: string): void => {
+    try {
+      ipcRenderer.send("log:renderer", level, message, detail);
+    } catch {
+      // El registro nunca debe romper la interfaz.
+    }
+  },
+
+  /** Guarda el informe de diagnóstico (archivo de texto) para enviarlo a soporte. */
+  exportDiagnostics: (): Promise<{ ok: boolean; path?: string; cancelled?: boolean }> => ipcRenderer.invoke("diag:export"),
+
   getAutoLaunch: (): Promise<AutoLaunchSettings> => ipcRenderer.invoke("autoLaunch:get"),
 
   setAutoLaunch: (enabled: boolean): Promise<AutoLaunchSettings> =>

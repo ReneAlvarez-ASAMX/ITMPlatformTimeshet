@@ -1,4 +1,5 @@
 import { t } from "./i18n";
+import * as appLog from "./appLog";
 import type {
   LoginResponse,
   SubmitTimeEntriesRequest,
@@ -70,7 +71,49 @@ export async function getTimesheet(
     headers: { Accept: "application/json", Token: token },
   });
   const data = await parseJsonOrThrow(res, t("api.ctx.timesheet"));
+  normalizeUserComments(data);
   return data as TimesheetResponse;
+}
+
+const NEWLINE = String.fromCharCode(13, 10);
+
+/** Texto de una nota que la API devuelve con una forma distinta a la documentada (lista, objeto, número…). */
+function commentToText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map(commentToText).filter(Boolean).join(NEWLINE);
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const key of ["UserComments", "UserComment", "Comments", "Comment", "Text", "Message", "Description"]) {
+      if (typeof obj[key] === "string") return obj[key] as string;
+    }
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+/**
+ * La interfaz da por hecho que UserComments es texto (o null). Si ITM Platform devuelve otra cosa
+ * (p. ej. tras un envío con nota), se convierte a texto y se anota la forma original en el registro.
+ */
+function normalizeUserComments(data: any): void {
+  let reported = false;
+  for (const project of data?.TimeReports ?? []) {
+    for (const wi of project?.WorkItems ?? []) {
+      for (const entry of wi?.TimeEntries ?? []) {
+        const raw = entry?.UserComments;
+        if (raw === null || raw === undefined || typeof raw === "string") continue;
+        if (!reported) {
+          appLog.warn("api", "UserComments con formato inesperado; se convierte a texto", {
+            tipo: Array.isArray(raw) ? "array" : typeof raw,
+            muestra: JSON.stringify(raw).slice(0, 500),
+          });
+          reported = true;
+        }
+        entry.UserComments = commentToText(raw);
+      }
+    }
+  }
 }
 
 export async function submitTimeEntries(

@@ -217,6 +217,18 @@ const es = {
   "tray.show": "Mostrar",
   "tray.quit": "Salir",
   "tray.status": "{count} en curso · {time} hoy",
+  "tray.diagnostics": "Guardar registro de diagnóstico",
+  "diag.button": "Guardar registro para soporte",
+  "diag.saved": "Registro guardado. Envíalo al equipo de soporte.",
+  "diag.failed": "No se pudo guardar el registro.",
+  "diag.saveTitle": "Guardar registro de diagnóstico",
+  "diag.problemTitle": "La aplicación no se mostró correctamente",
+  "diag.problemBody":
+    "Parece que la ventana no cargó bien. Guarda el registro de diagnóstico y envíalo al equipo de soporte para que podamos revisarlo.",
+  "diag.reload": "Reintentar",
+  "diag.errorTitle": "Algo salió mal",
+  "diag.errorBody":
+    "La aplicación encontró un error inesperado. Guarda el registro y envíalo al equipo de soporte.",
 
   // Errores del proceso principal y de la API
   "error.noSession": "No hay una sesión iniciada.",
@@ -436,6 +448,18 @@ const en: Dictionary = {
   "tray.show": "Show",
   "tray.quit": "Quit",
   "tray.status": "{count} running · {time} today",
+  "tray.diagnostics": "Save diagnostic log",
+  "diag.button": "Save log for support",
+  "diag.saved": "Log saved. Send it to the support team.",
+  "diag.failed": "The log could not be saved.",
+  "diag.saveTitle": "Save diagnostic log",
+  "diag.problemTitle": "The app did not display correctly",
+  "diag.problemBody":
+    "The window does not seem to have loaded properly. Save the diagnostic log and send it to the support team so we can look into it.",
+  "diag.reload": "Retry",
+  "diag.errorTitle": "Something went wrong",
+  "diag.errorBody":
+    "The app found an unexpected error. Save the log and send it to the support team.",
 
   "error.noSession": "No session is active.",
   "sendLog.writeError":
@@ -654,6 +678,18 @@ const pt: Dictionary = {
   "tray.show": "Mostrar",
   "tray.quit": "Sair",
   "tray.status": "{count} em andamento · {time} hoje",
+  "tray.diagnostics": "Salvar registro de diagnóstico",
+  "diag.button": "Salvar registro para o suporte",
+  "diag.saved": "Registro salvo. Envie-o à equipe de suporte.",
+  "diag.failed": "Não foi possível salvar o registro.",
+  "diag.saveTitle": "Salvar registro de diagnóstico",
+  "diag.problemTitle": "O aplicativo não foi exibido corretamente",
+  "diag.problemBody":
+    "Parece que a janela não carregou bem. Salve o registro de diagnóstico e envie-o à equipe de suporte para que possamos analisá-lo.",
+  "diag.reload": "Tentar novamente",
+  "diag.errorTitle": "Algo deu errado",
+  "diag.errorBody":
+    "O aplicativo encontrou um erro inesperado. Salve o registro e envie-o à equipe de suporte.",
 
   "error.noSession": "Nenhuma sessão iniciada.",
   "sendLog.writeError":
