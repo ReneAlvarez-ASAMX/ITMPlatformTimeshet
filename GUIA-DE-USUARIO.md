@@ -2,7 +2,7 @@
 
 Aplicación de escritorio para registrar el tiempo que dedicas a tus tareas de **ITM Platform**. Cronometras mientras trabajas (o añades el tiempo a mano) y, cuando quieras, envías las horas a ITM Platform con un clic.
 
-Versión de esta guía: 1.2.0 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
+Versión de esta guía: 1.2.1 · Desarrollado por [Actual Solutions](https://actualsolutions.tech/timesheet-itm-platform.html)
 
 ## Contenido
 
@@ -185,6 +185,19 @@ Si pulsas **Iniciar** igualmente, la nota se pone en rojo y el temporizador no a
 3. Escribe la duración en formato **h:mm** (por ejemplo `1:30` para una hora y media) y pulsa **Añadir**.
 
 El tiempo se suma al pendiente de esa tarea y día.
+
+**Formatos de duración admitidos** (en los cuadros de tiempo manual, **Editar** y la revisión antes de enviar). Al escribir, debajo aparece cómo se ha entendido (`= 2:30 (h:mm)`) y, al salir del cuadro, el texto se convierte a `h:mm`:
+
+| Escribes | Se entiende como |
+|---|---|
+| `1:30`, `01:30` | 1 h 30 m |
+| `2h30m`, `2h 30m`, `2h30`, `2 horas 30 minutos` | 2 h 30 m |
+| `2.5h`, `2,5h`, `2.5` | 2 h 30 m |
+| `45m`, `45 min`, `45 minutos` | 45 m |
+| `2` | 2 h (un número suelto es en horas) |
+| `45`, `90` | 45 m, 90 m (un número suelto mayor que 24 se entiende en minutos) |
+
+El resultado se redondea al minuto. Si lo escrito **supera las 24 horas** (`25h`, `30:00`, `1500m`…) aparece el error *"La duración no puede superar las 24 horas"*; si no se entiende, un aviso en rojo con ejemplos. En ambos casos **no se añade nada** (antes simplemente no ocurría nada). Exactamente 24 horas (`24h`, `24:00`) sí se admite.
 
 ### Corregir el tiempo pendiente
 

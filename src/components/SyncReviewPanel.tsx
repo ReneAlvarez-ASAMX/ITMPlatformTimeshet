@@ -4,8 +4,10 @@ import type { PendingItem } from "../hooks/useSync";
 import { fetchExisting } from "../hooks/useSync";
 import type { ExistingHours } from "../existingHours";
 import { useI18n } from "../i18n";
-import { formatDayShort, formatShort, hhmmToSeconds, secondsToHHMM, todayStr } from "../timeFormat";
+import { formatDayShort, formatShort, secondsToHHMM, todayStr } from "../timeFormat";
+import { parseDuration } from "../duration";
 import { mergeComments } from "../timerLogic";
+import { DurationHint } from "./DurationHint";
 
 interface Props {
   pending: PendingItem[];
@@ -165,8 +167,14 @@ function ReviewRow({
   useEffect(() => setNoteDraft(item.draft), [item.draft]);
 
   function commitHours() {
-    const seconds = hhmmToSeconds(hoursDraft);
-    if (seconds !== item.seconds) onEditSeconds(seconds);
+    const seconds = parseDuration(hoursDraft);
+    if (seconds === null) {
+      // No es válido (no se entiende o supera 24 h): no se aplica ni se pone el tiempo a cero.
+      // El texto se queda a la vista con su aviso en rojo para poder corregirlo.
+      return;
+    }
+    setHoursDraft(secondsToHHMM(seconds));
+    if (seconds !== Math.round(item.seconds / 60) * 60) onEditSeconds(seconds);
   }
 
   function commitNote() {
@@ -213,12 +221,15 @@ function ReviewRow({
           {isRunning ? (
             <span className="review-running-hint">{t("review.running", { time: formatShort(item.seconds) })}</span>
           ) : (
-            <input
-              className="review-hours-input"
-              value={hoursDraft}
-              onChange={(e) => setHoursDraft(e.target.value)}
-              onBlur={commitHours}
-            />
+            <span className="review-hours-box">
+              <input
+                className="review-hours-input"
+                value={hoursDraft}
+                onChange={(e) => setHoursDraft(e.target.value)}
+                onBlur={commitHours}
+              />
+              {parseDuration(hoursDraft) === null && <DurationHint value={hoursDraft} allowZero force />}
+            </span>
           )}
         </label>
         <textarea
