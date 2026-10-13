@@ -197,7 +197,7 @@ El tiempo se suma al pendiente de esa tarea y día.
 | `2` | 2 h (un número suelto es en horas) |
 | `45`, `90` | 45 m, 90 m (un número suelto mayor que 24 se entiende en minutos) |
 
-El resultado se redondea al minuto y no puede superar 24 horas. Si no se entiende lo escrito, aparece un aviso en rojo con ejemplos y **no se añade nada** (antes simplemente no ocurría nada).
+El resultado se redondea al minuto. Si lo escrito **supera las 24 horas** (`25h`, `30:00`, `1500m`…) aparece el error *"La duración no puede superar las 24 horas"*; si no se entiende, un aviso en rojo con ejemplos. En ambos casos **no se añade nada** (antes simplemente no ocurría nada). Exactamente 24 horas (`24h`, `24:00`) sí se admite.
 
 ### Corregir el tiempo pendiente
 

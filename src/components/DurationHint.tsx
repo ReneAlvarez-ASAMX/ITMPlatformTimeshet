@@ -1,4 +1,4 @@
-import { parseDuration } from "../duration";
+import { parseDurationResult } from "../duration";
 import { useI18n } from "../i18n";
 import { secondsToHHMM } from "../timeFormat";
 
@@ -15,10 +15,16 @@ interface Props {
 export function DurationHint({ value, allowZero = false, force = false }: Props) {
   const { t } = useI18n();
   if (!value.trim() && !force) return null;
-  const seconds = parseDuration(value);
-  if (seconds === null) {
-    return <div className="duration-hint invalid">{t("duration.invalid")}</div>;
+  const result = parseDurationResult(value);
+  if (!result.ok) {
+    // El límite de 24 h tiene su propio mensaje; lo demás es «no se entiende» (o vacío tras intentar añadir).
+    return (
+      <div className="duration-hint invalid">
+        {result.reason === "too-long" ? t("duration.tooLong") : t("duration.invalid")}
+      </div>
+    );
   }
+  const seconds = result.seconds;
   if (seconds === 0 && !allowZero) {
     return <div className="duration-hint invalid">{t("duration.zero")}</div>;
   }

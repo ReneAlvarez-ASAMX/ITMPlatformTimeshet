@@ -169,8 +169,8 @@ function ReviewRow({
   function commitHours() {
     const seconds = parseDuration(hoursDraft);
     if (seconds === null) {
-      // No se entiende: se recupera el valor actual en lugar de poner el tiempo a cero.
-      setHoursDraft(secondsToHHMM(item.seconds));
+      // No es válido (no se entiende o supera 24 h): no se aplica ni se pone el tiempo a cero.
+      // El texto se queda a la vista con su aviso en rojo para poder corregirlo.
       return;
     }
     setHoursDraft(secondsToHHMM(seconds));
@@ -221,12 +221,15 @@ function ReviewRow({
           {isRunning ? (
             <span className="review-running-hint">{t("review.running", { time: formatShort(item.seconds) })}</span>
           ) : (
-            <input
-              className="review-hours-input"
-              value={hoursDraft}
-              onChange={(e) => setHoursDraft(e.target.value)}
-              onBlur={commitHours}
-            />
+            <span className="review-hours-box">
+              <input
+                className="review-hours-input"
+                value={hoursDraft}
+                onChange={(e) => setHoursDraft(e.target.value)}
+                onBlur={commitHours}
+              />
+              {parseDuration(hoursDraft) === null && <DurationHint value={hoursDraft} allowZero force />}
+            </span>
           )}
         </label>
         <textarea
