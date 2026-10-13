@@ -1,6 +1,10 @@
 import { useCallback, useRef, useState } from "react";
-import type { TimeReportSubmitEntry, TimerRecord } from "../../electron/types";
+import type { SendAuditItem, TimeReportSubmitEntry, TimerRecord } from "../../electron/types";
+import { classifyResponse } from "../../electron/sendResult";
+import { fetchExistingPerDate } from "../existingHours";
+import type { ExistingHours } from "../existingHours";
 import { useI18n } from "../i18n";
+import { composeNote, mergeComments } from "../timerLogic";
 import { hhmmToSeconds, secondsToHHMM } from "../timeFormat";
 
 const MIN_SYNCABLE_SECONDS = 30;
@@ -12,29 +16,21 @@ export interface PendingItem {
   projectName: string;
   date: string;
   seconds: number;
-  comment: string;
+  /** Borrador de la nota del tramo en curso (editable). */
+  draft: string;
+  /** Nota completa de este envío: tramos cerrados + borrador, una por línea con su tiempo parcial. */
+  note: string;
 }
 
-/** Consulta a ITM Platform las horas ya reportadas para el rango de fechas indicado. */
-export async function fetchExistingSeconds(
-  minDate: string,
-  maxDate: string
-): Promise<Map<string, number>> {
-  const fresh = await window.itm.getTimesheet(minDate, maxDate);
-  const existingByKey = new Map<string, number>();
-  for (const project of fresh.TimeReports) {
-    for (const wi of project.WorkItems) {
-      for (const entry of wi.TimeEntries) {
-        existingByKey.set(`${wi.WorkItemId}_${entry.Date}`, hhmmToSeconds(entry.ReportedHours));
-      }
-    }
-  }
-  return existingByKey;
+/** Consulta a ITM Platform lo ya reportado en cada una de las fechas indicadas (fecha por fecha). */
+export function fetchExisting(dates: string[]): Promise<ExistingHours> {
+  return fetchExistingPerDate(dates, (date) => window.itm.getTimesheet(date, date));
 }
 
 export function collectPending(
   timers: Record<string, TimerRecord>,
-  getElapsedSeconds: (workItemId: number) => number
+  getElapsedSeconds: (workItemId: number) => number,
+  now: number = Date.now()
 ): PendingItem[] {
   return Object.values(timers)
     .map((t) => ({
@@ -44,7 +40,8 @@ export function collectPending(
       projectName: t.projectName,
       date: t.date,
       seconds: getElapsedSeconds(t.workItemId),
-      comment: t.comment ?? "",
+      draft: t.comment ?? "",
+      note: composeNote(t, now),
     }))
     .filter((t) => t.seconds >= MIN_SYNCABLE_SECONDS)
     .sort((a, b) => a.date.localeCompare(b.date) || a.taskName.localeCompare(b.taskName));
@@ -68,39 +65,66 @@ export function useSync() {
       setLastError(null);
       setItemErrors({});
       try {
-        const dates = pending.map((p) => p.date).sort();
-        const minDate = dates[0];
-        const maxDate = dates[dates.length - 1];
+        // Lo ya reportado, fecha por fecha: una fecha que no se pueda consultar no bloquea las demás.
+        const { existing: existingByKey, comments: existingComments, failed: failedDates } = await fetchExisting(
+          pending.map((p) => p.date)
+        );
 
-        const existingByKey = await fetchExistingSeconds(minDate, maxDate);
+        const dateErrors: Record<number, string> = {};
+        const sendable = pending.filter((p) => {
+          const detail = failedDates.get(p.date);
+          if (detail === undefined) return true;
+          // Sin saber lo que ya hay en ITM Platform se sobrescribiría: esta tarea no se envía.
+          dateErrors[p.workItemId] = tRef.current("review.dateError", { date: p.date, detail });
+          return false;
+        });
+        if (sendable.length === 0) {
+          setItemErrors(dateErrors);
+          setLastError(tRef.current("review.nothingSendable"));
+          return { successCount: 0, failureCount: pending.length };
+        }
 
-        const entries: TimeReportSubmitEntry[] = pending.map((p) => {
+        const entries: TimeReportSubmitEntry[] = [];
+        // Datos para el registro local de envíos (CSV): qué había, qué se suma y qué se envía.
+        const audit: SendAuditItem[] = [];
+        for (const p of sendable) {
           const existingSeconds = existingByKey.get(`${p.workItemId}_${p.date}`) ?? 0;
-          const combined = existingSeconds + p.seconds;
-          return {
+          const reportedHours = secondsToHHMM(existingSeconds + p.seconds);
+          // Se AÑADE a la nota que ITM ya tiene ese día; nunca se reemplaza.
+          const comment = mergeComments(existingComments.get(`${p.workItemId}_${p.date}`), p.note);
+          entries.push({
             EntityId: p.entityId,
             WorkItemId: p.workItemId,
             Date: p.date,
-            ReportedHours: secondsToHHMM(combined),
-            ...(p.comment.trim() ? { UserComment: p.comment.trim() } : {}),
-          };
-        });
-
-        const res = await window.itm.submitTimeEntries({ TimeReports: entries });
-
-        const failedIds = new Set<number>();
-        if (res.Errors && res.Errors.length > 0) {
-          const errMap: Record<number, string> = {};
-          for (const e of res.Errors) {
-            failedIds.add(e.WorkItemId);
-            errMap[e.WorkItemId] = e.Message;
-          }
-          setItemErrors(errMap);
+            ReportedHours: reportedHours,
+            ...(comment ? { UserComment: comment } : {}),
+          });
+          audit.push({
+            workItemId: p.workItemId,
+            entityId: p.entityId,
+            projectName: p.projectName,
+            taskName: p.taskName,
+            date: p.date,
+            existingMinutes: Math.round(existingSeconds / 60),
+            addedMinutes: Math.round(p.seconds / 60),
+            sentMinutes: Math.round(hhmmToSeconds(reportedHours) / 60),
+            comment,
+          });
         }
 
-        const successIds = pending
-          .map((p) => p.workItemId)
-          .filter((id) => !failedIds.has(id));
+        const res = await window.itm.submitTimeEntries({ TimeReports: entries }, audit);
+
+        // Mismo criterio que el registro de envíos: un error general sin detalle por tarea
+        // significa que NINGUNA se envió (antes se daban por enviadas y se borraba el pendiente).
+        const { failed, okIds: successIds } = classifyResponse(
+          res,
+          sendable.map((p) => p.workItemId)
+        );
+        const errMap: Record<number, string> = { ...dateErrors };
+        failed.forEach((message, id) => {
+          errMap[id] = message;
+        });
+        if (Object.keys(errMap).length > 0) setItemErrors(errMap);
 
         if (successIds.length > 0) onSynced(successIds);
 
@@ -108,7 +132,10 @@ export function useSync() {
           setLastError(res.StatusMessage || tRef.current("sync.error.send"));
         }
 
-        return { successCount: successIds.length, failureCount: failedIds.size };
+        return {
+          successCount: successIds.length,
+          failureCount: Object.keys(errMap).length,
+        };
       } catch (err: any) {
         setLastError(err?.message ?? tRef.current("sync.error.generic"));
         return { successCount: 0, failureCount: pending.length };

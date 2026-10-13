@@ -2,6 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppState, TimerRecord } from "../../electron/types";
 import { emptyAppState } from "../../electron/types";
 import { useI18n } from "../i18n";
+import {
+  planManualAdd,
+  planMarkSynced,
+  planPause,
+  planSetAccumulated,
+  planStart,
+} from "../timerLogic";
 import { formatShort, todayStr } from "../timeFormat";
 
 export interface TaskRef {
@@ -9,6 +16,14 @@ export interface TaskRef {
   entityId: number;
   taskName: string;
   projectName: string;
+}
+
+/**
+ * Aplica el texto de la nota tal como está escrito en pantalla, para no depender de que el campo
+ * haya perdido el foco (y guardado) justo antes de pausar o iniciar.
+ */
+function withDraft(record: TimerRecord | undefined, draft: string | undefined): TimerRecord | undefined {
+  return record && draft !== undefined ? { ...record, comment: draft } : record;
 }
 
 export function useTimers() {
@@ -60,31 +75,11 @@ export function useTimers() {
 
   /** Inicia el cronómetro en vivo para una tarea, imputado al día indicado (normalmente hoy). */
   const start = useCallback(
-    (task: TaskRef, date: string) => {
+    (task: TaskRef, date: string, draft?: string) => {
       const key = String(task.workItemId);
-      const existing = stateRef.current.timers[key];
-      if (existing && existing.accumulatedSeconds > 0 && existing.date !== date) {
-        return {
-          ok: false as const,
-          reason: "stale-date" as const,
-          pendingDate: existing.date,
-          pendingSeconds: existing.accumulatedSeconds,
-        };
-      }
-      const record: TimerRecord = existing
-        ? { ...existing, running: true, startedAt: Date.now(), date }
-        : {
-            workItemId: task.workItemId,
-            entityId: task.entityId,
-            taskName: task.taskName,
-            projectName: task.projectName,
-            date,
-            startedAt: Date.now(),
-            accumulatedSeconds: 0,
-            running: true,
-            comment: "",
-          };
-      persist({ timers: { ...stateRef.current.timers, [key]: record } });
+      const plan = planStart(withDraft(stateRef.current.timers[key], draft), task, date, Date.now());
+      if (!plan.ok) return plan;
+      persist({ timers: { ...stateRef.current.timers, [key]: plan.record } });
       return { ok: true as const };
     },
     [persist]
@@ -92,32 +87,11 @@ export function useTimers() {
 
   /** Añade tiempo capturado manualmente (sin usar el cronómetro) al acumulado pendiente del día indicado. */
   const addManualSeconds = useCallback(
-    (task: TaskRef, seconds: number, date: string) => {
-      if (seconds <= 0) return { ok: false as const, reason: "invalid" as const };
+    (task: TaskRef, seconds: number, date: string, note = "") => {
       const key = String(task.workItemId);
-      const existing = stateRef.current.timers[key];
-      if (existing && existing.accumulatedSeconds > 0 && existing.date !== date && !existing.running) {
-        return {
-          ok: false as const,
-          reason: "stale-date" as const,
-          pendingDate: existing.date,
-          pendingSeconds: existing.accumulatedSeconds,
-        };
-      }
-      const record: TimerRecord = existing
-        ? { ...existing, accumulatedSeconds: existing.accumulatedSeconds + seconds }
-        : {
-            workItemId: task.workItemId,
-            entityId: task.entityId,
-            taskName: task.taskName,
-            projectName: task.projectName,
-            date,
-            startedAt: null,
-            accumulatedSeconds: seconds,
-            running: false,
-            comment: "",
-          };
-      persist({ timers: { ...stateRef.current.timers, [key]: record } });
+      const plan = planManualAdd(stateRef.current.timers[key], task, seconds, date, Date.now(), note);
+      if (!plan.ok) return plan;
+      persist({ timers: { ...stateRef.current.timers, [key]: plan.record } });
       return { ok: true as const };
     },
     [persist]
@@ -144,9 +118,8 @@ export function useTimers() {
       const key = String(workItemId);
       const existing = stateRef.current.timers[key];
       if (!existing) return { ok: false as const };
-      const clamped = Math.max(0, seconds);
       persist({
-        timers: { ...stateRef.current.timers, [key]: { ...existing, accumulatedSeconds: clamped } },
+        timers: { ...stateRef.current.timers, [key]: planSetAccumulated(existing, seconds) },
       });
       return { ok: true as const };
     },
@@ -164,17 +137,11 @@ export function useTimers() {
   );
 
   const pause = useCallback(
-    (workItemId: number) => {
+    (workItemId: number, draft?: string) => {
       const key = String(workItemId);
-      const existing = stateRef.current.timers[key];
-      if (!existing || !existing.running) return;
-      const elapsed = existing.startedAt ? (Date.now() - existing.startedAt) / 1000 : 0;
-      const record: TimerRecord = {
-        ...existing,
-        running: false,
-        startedAt: null,
-        accumulatedSeconds: existing.accumulatedSeconds + elapsed,
-      };
+      // Al pausar se cierra el tramo con su tiempo y la nota escrita durante él.
+      const record = planPause(withDraft(stateRef.current.timers[key], draft), Date.now());
+      if (!record) return;
       persist({ timers: { ...stateRef.current.timers, [key]: record } });
     },
     [persist]
@@ -224,12 +191,7 @@ export function useTimers() {
         const key = String(id);
         const existing = next[key];
         if (!existing) continue;
-        next[key] = {
-          ...existing,
-          accumulatedSeconds: 0,
-          comment: "",
-          startedAt: existing.running ? Date.now() : null,
-        };
+        next[key] = planMarkSynced(existing, Date.now());
       }
       persist({ timers: next });
     },

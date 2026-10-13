@@ -1,9 +1,11 @@
-import { app, BrowserWindow, ipcMain, Menu, Notification, Tray, nativeImage, screen, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, screen, shell } from "electron";
+import { promises as fsp } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as itm from "./itmClient";
 import * as store from "./store";
 import * as updater from "./updater";
+import * as sendLog from "./sendLog";
 import {
   DEFAULT_LANGUAGE,
   getCurrentLanguage,
@@ -18,7 +20,10 @@ import type {
   AutoLaunchSettings,
   Credentials,
   ReminderSettings,
+  SendAuditItem,
+  SendLogEntry,
   SubmitTimeEntriesRequest,
+  SubmitTimeEntriesResponse,
 } from "./types";
 import {
   DEMO_COMPANY,
@@ -320,6 +325,7 @@ app.whenReady().then(async () => {
   demoLocked = process.argv.includes("--demo");
   demoMode = demoLocked || (await store.loadDemoFlag());
   store.setProfile(demoMode);
+  sendLog.purgeOld(store.sendLogPath()).catch((err) => console.warn("[sendLog] purga:", err));
   setCurrentLanguage(
     (await store.loadLanguage()) ?? parseLanguage(app.getLocale()) ?? DEFAULT_LANGUAGE
   );
@@ -403,22 +409,60 @@ ipcMain.handle(
 
 ipcMain.handle(
   "itm:submitTimeEntries",
-  async (_e, payload: SubmitTimeEntriesRequest) => {
+  async (
+    _e,
+    args: { payload: SubmitTimeEntriesRequest; audit: SendAuditItem[] }
+  ): Promise<SubmitTimeEntriesResponse> => {
+    const { payload, audit } = args;
     const creds = await store.loadCredentials();
     const session = await requireSession();
     if (!creds || !session) throw new Error(tr("error.noSession"));
-    try {
-      return await itm.submitTimeEntries(currentHost(), creds.company, session.token, payload);
-    } catch (err) {
-      if (err instanceof itm.ItmApiError && err.status === 401) {
-        const relogged = await itm.login(currentHost(), creds.company, creds.apiKey);
-        await store.saveSession({ token: relogged.Token, userId: relogged.UserID });
-        return await itm.submitTimeEntries(currentHost(), creds.company, relogged.Token, payload);
-      }
-      throw err;
-    }
+
+    // Registro local (CSV) antes de enviar, y con el resultado después; ver sendLog.sendWithLog.
+    return sendLog.sendWithLog({
+      file: store.sendLogPath(),
+      audit,
+      writeError: (detail) => new Error(tr("sendLog.writeError", { detail })),
+      send: async () => {
+        try {
+          return await itm.submitTimeEntries(currentHost(), creds.company, session.token, payload);
+        } catch (err) {
+          if (!(err instanceof itm.ItmApiError && err.status === 401)) throw err;
+          const relogged = await itm.login(currentHost(), creds.company, creds.apiKey);
+          await store.saveSession({ token: relogged.Token, userId: relogged.UserID });
+          return await itm.submitTimeEntries(currentHost(), creds.company, relogged.Token, payload);
+        }
+      },
+    });
   }
 );
+
+ipcMain.handle("sendlog:list", async (): Promise<SendLogEntry[]> => sendLog.readEntries(store.sendLogPath()));
+
+ipcMain.handle("sendlog:reveal", async () => {
+  const file = store.sendLogPath();
+  try {
+    await fsp.access(file);
+    shell.showItemInFolder(file);
+  } catch {
+    await shell.openPath(path.dirname(file));
+  }
+});
+
+ipcMain.handle("sendlog:export", async (): Promise<{ ok: boolean; path?: string }> => {
+  const source = store.sendLogPath();
+  const target = await dialog.showSaveDialog(mainWindow!, {
+    defaultPath: `informe-envios-${new Date().toISOString().slice(0, 10)}.csv`,
+    filters: [{ name: "CSV", extensions: ["csv"] }],
+  });
+  if (target.canceled || !target.filePath) return { ok: false };
+  try {
+    await fsp.copyFile(source, target.filePath);
+    return { ok: true, path: target.filePath };
+  } catch {
+    return { ok: false };
+  }
+});
 
 /**
  * Lee el idioma de "Mi perfil" en ITM Platform y lo aplica a la app. Si no se puede leer (sin red,

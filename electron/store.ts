@@ -17,6 +17,11 @@ export function setProfile(demo: boolean): void {
   profileSuffix = demo ? "-demo" : "";
 }
 
+/** Ruta del CSV con el registro de envíos del entorno actual (producción o demo). */
+export function sendLogPath(): string {
+  return path.join(userDataDir(), `send-log${profileSuffix}.csv`);
+}
+
 function credentialsPath(): string {
   return path.join(userDataDir(), `credentials${profileSuffix}.json`);
 }

@@ -5,6 +5,8 @@ import type {
   AppState,
   AutoLaunchSettings,
   Credentials,
+  SendAuditItem,
+  SendLogEntry,
   LoginResponse,
   ReminderSettings,
   SubmitTimeEntriesRequest,
@@ -26,9 +28,17 @@ const api = {
     ipcRenderer.invoke("itm:getTimesheet", { startDate, endDate }),
 
   submitTimeEntries: (
-    payload: SubmitTimeEntriesRequest
+    payload: SubmitTimeEntriesRequest,
+    audit: SendAuditItem[]
   ): Promise<SubmitTimeEntriesResponse> =>
-    ipcRenderer.invoke("itm:submitTimeEntries", payload),
+    ipcRenderer.invoke("itm:submitTimeEntries", { payload, audit }),
+
+  getSendLog: (): Promise<SendLogEntry[]> => ipcRenderer.invoke("sendlog:list"),
+
+  revealSendLog: (): Promise<void> => ipcRenderer.invoke("sendlog:reveal"),
+
+  exportSendLog: (): Promise<{ ok: boolean; path?: string }> =>
+    ipcRenderer.invoke("sendlog:export"),
 
   getLanguage: (): Promise<Language> => ipcRenderer.invoke("language:get"),
 

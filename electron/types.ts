@@ -118,6 +118,12 @@ export interface ItmApiError {
 
 // --- Estado local persistido (cronómetros y tiempo pendiente de sincronizar) ---
 
+/** Un tramo de tiempo capturado (una pausa del temporizador o un añadido manual) con su nota. */
+export interface NoteSegment {
+  seconds: number;
+  note: string;
+}
+
 export interface TimerRecord {
   workItemId: number;
   entityId: number;
@@ -127,7 +133,8 @@ export interface TimerRecord {
   startedAt: number | null; // epoch ms; null si está pausado/detenido
   accumulatedSeconds: number; // segundos no sincronizados aún con ITM Platform
   running: boolean;
-  comment: string; // nota local que se envía como UserComment al sincronizar
+  comment: string; // borrador de la nota del tramo en curso (se cierra al pausar)
+  segments?: NoteSegment[]; // tramos ya cerrados con su nota; al enviar se juntan una nota por línea
 }
 
 export interface AppState {
@@ -175,4 +182,37 @@ export interface AutoLaunchSettings {
   enabled: boolean;
   // false en desarrollo (app sin empaquetar): registrar electron.exe como programa de inicio no tiene sentido.
   supported: boolean;
+}
+
+// --- Registro local de envíos (CSV) para reconciliar con ITM Platform ---
+
+/** Una tarea y fecha incluida en un envío, con todo lo necesario para auditarla. */
+export interface SendAuditItem {
+  workItemId: number;
+  entityId: number; // proyecto
+  projectName: string;
+  taskName: string;
+  date: string; // YYYY-MM-DD: día al que se imputan las horas
+  existingMinutes: number; // lo que ITM Platform ya tenía para esa tarea y día
+  addedMinutes: number; // lo que se suma desde la app
+  sentMinutes: number; // el total que se envía (existente + sumado)
+  comment: string;
+}
+
+export type SendLogStatus = "OK" | "ERROR" | "UNCONFIRMED";
+
+export interface SendLogEntry {
+  batchId: string;
+  sentAt: string; // "YYYY-MM-DD HH:MM:SS" local
+  status: SendLogStatus;
+  projectName: string;
+  projectId: number;
+  taskName: string;
+  taskId: number;
+  workDate: string;
+  existingMinutes: number;
+  addedMinutes: number;
+  sentMinutes: number;
+  note: string;
+  message: string;
 }

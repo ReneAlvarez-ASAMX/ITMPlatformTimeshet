@@ -11,6 +11,7 @@ import { UpdateControl } from "../components/UpdateControl";
 import { BrandMark, Icon } from "../components/Icon";
 import { DayProgress } from "../components/DayProgress";
 import { PoweredBy } from "../components/PoweredBy";
+import { SendReport } from "../components/SendReport";
 import { useI18n } from "../i18n";
 import { useSecretTaps } from "../hooks/useSecretTaps";
 import { switchMode } from "../modeSwitch";
@@ -61,6 +62,7 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
   const [miniMode, setMiniModeState] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [dailyFavoritesOpen, setDailyFavoritesOpen] = useState(false);
   const onSecretTap = useSecretTaps(() => switchMode(mode.demo));
   const startIso = toIsoDate(weekStart);
@@ -69,7 +71,7 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
 
   const { data, loading, error, refetch } = useTimesheet(startIso, endIso);
   const timers = useTimers();
-  const { syncing, lastError, itemErrors, submit } = useSync();
+  const { syncing, lastError, itemErrors: allItemErrors, submit } = useSync();
 
   function handleWeekChange(rawDate: Date) {
     const newStart = startOfWeek(rawDate);
@@ -150,11 +152,9 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
     setCollapsed(next);
   }, [visibleProjects]);
 
-  const pending = useMemo(
-    () => collectPending(timers.timers, timers.getElapsedSeconds),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [timers.timers]
-  );
+  // Se calcula en cada renderizado (hay uno por segundo): así el tiempo de un temporizador en marcha
+  // y su nota están siempre al día al revisar o enviar, y no el del último cambio de estado.
+  const pending = collectPending(timers.timers, timers.getElapsedSeconds, Date.now());
 
   // Horas del día seleccionado: ya reportadas en ITM Platform y las de temporizadores sin enviar.
   const reportedDaySeconds = useMemo(() => {
@@ -193,6 +193,11 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
   const weekPendingSeconds = Object.values(timers.timers)
     .filter((t) => t.date >= startIso && t.date <= endIso)
     .reduce((sum, t) => sum + timers.getElapsedSeconds(t.workItemId), 0);
+
+  // Solo se muestran los errores de tareas que siguen pendientes (al descartar o enviar una, su error desaparece).
+  const itemErrors = Object.fromEntries(
+    pending.filter((p) => allItemErrors[p.workItemId] !== undefined).map((p) => [p.workItemId, allItemErrors[p.workItemId]])
+  ) as Record<number, string>;
 
   async function handleConfirmSync() {
     const result = await submit(pending, (ids) => timers.markSynced(ids));
@@ -242,6 +247,10 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
           </div>
           <ReminderSettingsControl />
           <AutoLaunchControl />
+          <button className="header-btn" onClick={() => setReportOpen(true)} title={t("report.title")}>
+            <Icon name="file-text" />
+            <span className="lbl">{t("report.open")}</span>
+          </button>
           <UpdateControl />
           <button className="header-btn icon-only" onClick={() => setMini(true)} title={t("header.miniMode")}>
             <Icon name="minimize-2" />
@@ -364,6 +373,8 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
           onClose={() => setDailyFavoritesOpen(false)}
         />
       )}
+
+      {reportOpen && <SendReport onClose={() => setReportOpen(false)} />}
 
       {reviewOpen && (
         <SyncReviewPanel
