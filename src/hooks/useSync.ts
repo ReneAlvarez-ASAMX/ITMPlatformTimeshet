@@ -4,6 +4,7 @@ import { classifyResponse } from "../../electron/sendResult";
 import { fetchExistingPerDate } from "../existingHours";
 import type { ExistingHours } from "../existingHours";
 import { useI18n } from "../i18n";
+import { composeNote, mergeComments } from "../timerLogic";
 import { hhmmToSeconds, secondsToHHMM } from "../timeFormat";
 
 const MIN_SYNCABLE_SECONDS = 30;
@@ -15,7 +16,10 @@ export interface PendingItem {
   projectName: string;
   date: string;
   seconds: number;
-  comment: string;
+  /** Borrador de la nota del tramo en curso (editable). */
+  draft: string;
+  /** Nota completa de este envío: tramos cerrados + borrador, una por línea con su tiempo parcial. */
+  note: string;
 }
 
 /** Consulta a ITM Platform lo ya reportado en cada una de las fechas indicadas (fecha por fecha). */
@@ -25,7 +29,8 @@ export function fetchExisting(dates: string[]): Promise<ExistingHours> {
 
 export function collectPending(
   timers: Record<string, TimerRecord>,
-  getElapsedSeconds: (workItemId: number) => number
+  getElapsedSeconds: (workItemId: number) => number,
+  now: number = Date.now()
 ): PendingItem[] {
   return Object.values(timers)
     .map((t) => ({
@@ -35,7 +40,8 @@ export function collectPending(
       projectName: t.projectName,
       date: t.date,
       seconds: getElapsedSeconds(t.workItemId),
-      comment: t.comment ?? "",
+      draft: t.comment ?? "",
+      note: composeNote(t, now),
     }))
     .filter((t) => t.seconds >= MIN_SYNCABLE_SECONDS)
     .sort((a, b) => a.date.localeCompare(b.date) || a.taskName.localeCompare(b.taskName));
@@ -60,7 +66,7 @@ export function useSync() {
       setItemErrors({});
       try {
         // Lo ya reportado, fecha por fecha: una fecha que no se pueda consultar no bloquea las demás.
-        const { existing: existingByKey, failed: failedDates } = await fetchExisting(
+        const { existing: existingByKey, comments: existingComments, failed: failedDates } = await fetchExisting(
           pending.map((p) => p.date)
         );
 
@@ -84,7 +90,8 @@ export function useSync() {
         for (const p of sendable) {
           const existingSeconds = existingByKey.get(`${p.workItemId}_${p.date}`) ?? 0;
           const reportedHours = secondsToHHMM(existingSeconds + p.seconds);
-          const comment = p.comment.trim();
+          // Se AÑADE a la nota que ITM ya tiene ese día; nunca se reemplaza.
+          const comment = mergeComments(existingComments.get(`${p.workItemId}_${p.date}`), p.note);
           entries.push({
             EntityId: p.entityId,
             WorkItemId: p.workItemId,

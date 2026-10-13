@@ -739,10 +739,67 @@ button:disabled {
   text-decoration: underline;
 }
 
-.manual-entry-form {
+.notes-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+  width: 420px;
+  max-width: 100%;
+}
+
+.notes-previous,
+.review-note-preview {
+  background: var(--bg);
+  border-left: 3px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.review-note-preview {
+  border-left-color: var(--itm-navy);
+  color: var(--text);
+  margin-top: 2px;
+}
+
+.notes-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--itm-navy);
+  margin-bottom: 2px;
+}
+
+.notes-previous pre,
+.review-note-preview pre {
+  margin: 0;
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-input,
+.review-note-input {
+  font-family: inherit;
+  resize: vertical;
+  min-height: 34px;
+}
+
+.manual-entry-row {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.manual-entry-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   margin-top: 2px;
 }
 

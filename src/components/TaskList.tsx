@@ -2,6 +2,7 @@ import type { TimeReportGroup } from "../../electron/types";
 import type { TaskRef, useTimers } from "../hooks/useTimers";
 import { formatDayShort, formatShort, hhmmToSeconds } from "../timeFormat";
 import { useI18n } from "../i18n";
+import { previousNotes } from "../timerLogic";
 import { Icon } from "./Icon";
 import { TaskRow } from "./TaskRow";
 
@@ -102,11 +103,12 @@ export function TaskList({
                     elapsedSeconds={timers.getElapsedSeconds(wi.WorkItemId)}
                     pendingDate={timer?.date ?? null}
                     comment={timer?.comment ?? ""}
+                    previousNotes={previousNotes(timer)}
                     isFavorite={timers.isFavorite(wi.WorkItemId)}
                     onToggleFavorite={(id) => timers.toggleFavorite(id)}
-                    onStart={(task: TaskRef, date: string) => timers.start(task, date)}
-                    onPause={(id) => timers.pause(id)}
-                    onAddManual={(task, seconds, date) => timers.addManualSeconds(task, seconds, date)}
+                    onStart={(task: TaskRef, date: string, draft?: string) => timers.start(task, date, draft)}
+                    onPause={(id, draft) => timers.pause(id, draft)}
+                    onAddManual={(task, seconds, date, note) => timers.addManualSeconds(task, seconds, date, note)}
                     onEditAccumulated={(id, seconds) => timers.setAccumulatedSeconds(id, seconds)}
                     onSetComment={(id, comment) => timers.setComment(id, comment)}
                     onAdjustStart={(id, newStartedAt) => timers.adjustStartTime(id, newStartedAt)}

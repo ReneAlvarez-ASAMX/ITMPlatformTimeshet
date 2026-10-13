@@ -143,6 +143,23 @@ Con el temporizador en marcha verás **"Iniciado a las HH:MM · ajustar"**. Púl
 
 En cuanto una tarea acumula tiempo aparece un campo **Nota (opcional)**. Lo que escribas se enviará a ITM Platform como comentario de esas horas.
 
+### Notas por sesión (se acumulan, no se reemplazan)
+
+Cada vez que **pausas** el temporizador (o añades tiempo a mano) se cierra un **tramo** con su nota y su **tiempo parcial**. Si luego vuelves a iniciar la tarea el mismo día, la caja de nota empieza **en blanco** para la nueva sesión y las notas anteriores se ven **encima, de solo lectura**: solo escribes la nueva, sin reescribir nada.
+
+Al enviar, las notas se juntan **una por línea**, cada una con su tiempo entre paréntesis, y se **añaden a la nota que ITM Platform ya tuviera ese día** (nunca la reemplazan):
+
+> Revisión de APR (1h 30m)
+> Llamada con Lawants (45m)
+> Reunión interna (30m)
+
+- Las líneas se separan con un salto de línea **CRLF**, para que Power BI y otros informes las muestren como líneas distintas.
+- La nota es un campo **multilínea**: puedes escribir varias líneas en una misma nota; el tiempo parcial va al final de la última.
+- **Tiempo manual:** al añadirlo, el formulario tiene su propia caja de nota para ese tiempo.
+- Si escribes la nota **después** de pausar, se asigna al último tramo sin nota, con su tiempo.
+- En **Revisar y enviar** ves exactamente cómo quedará la nota completa en ITM Platform antes de confirmar.
+- Si dejas el tiempo de una tarea a cero (**Editar** → `0:00`) o la descartas, sus notas se descartan también.
+
 ### No pierdes el tiempo si algo falla
 
 El progreso se **guarda automáticamente** en tu equipo. Si la aplicación o el equipo se cierran de forma inesperada, al volver a abrir verás tus temporizadores tal como estaban.

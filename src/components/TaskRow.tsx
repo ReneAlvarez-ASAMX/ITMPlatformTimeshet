@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { WorkItem } from "../../electron/types";
 import type { TaskRef } from "../hooks/useTimers";
 import { useI18n } from "../i18n";
 import { Icon } from "./Icon";
+import { NotesField } from "./NotesField";
 import {
   formatClock,
   formatDayShort,
@@ -33,11 +34,13 @@ interface Props {
   /** Fecha (YYYY-MM-DD) a la que corresponde el tiempo pendiente de esta tarea, si lo hay. */
   pendingDate: string | null;
   comment: string;
+  /** Notas de tramos ya cerrados (solo lectura), una por línea con su tiempo parcial. */
+  previousNotes: string;
   isFavorite: boolean;
   onToggleFavorite: (workItemId: number) => void;
-  onStart: (task: TaskRef, date: string) => ActionResult;
-  onPause: (workItemId: number) => void;
-  onAddManual: (task: TaskRef, seconds: number, date: string) => ActionResult;
+  onStart: (task: TaskRef, date: string, draft?: string) => ActionResult;
+  onPause: (workItemId: number, draft?: string) => void;
+  onAddManual: (task: TaskRef, seconds: number, date: string, note: string) => ActionResult;
   onEditAccumulated: (workItemId: number, seconds: number) => { ok: boolean };
   onSetComment: (workItemId: number, comment: string) => void;
   onAdjustStart: (workItemId: number, newStartedAt: number) => { ok: boolean };
@@ -56,6 +59,7 @@ export function TaskRow({
   elapsedSeconds,
   pendingDate,
   comment,
+  previousNotes,
   isFavorite,
   onToggleFavorite,
   onStart,
@@ -71,11 +75,15 @@ export function TaskRow({
   const [blockedTried, setBlockedTried] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [manualValue, setManualValue] = useState("");
+  const [manualNote, setManualNote] = useState("");
   const [noteDraft, setNoteDraft] = useState(comment);
   const [editingStart, setEditingStart] = useState(false);
   const [startValue, setStartValue] = useState("");
   const [editingAmount, setEditingAmount] = useState(false);
   const [amountValue, setAmountValue] = useState("");
+
+  // La caja de nota refleja el registro: al pausar o enviar se vacía y empieza una nota nueva.
+  useEffect(() => setNoteDraft(comment), [comment]);
 
   const dayEntry = workItem.TimeEntries.find((t) => t.Date === selectedDate);
   const reportedSeconds = hhmmToSeconds(dayEntry?.ReportedHours);
@@ -90,6 +98,9 @@ export function TaskRow({
   // Con tiempo pendiente de otra fecha no se puede registrar más en esta tarea hasta enviarlo.
   const blockedByOtherDay =
     Boolean(pendingDate) && pendingDate !== selectedDate && elapsedSeconds > 0 && !isRunning;
+  // Nota que ITM Platform ya tiene en la fecha a la que irá este tiempo (solo lectura).
+  const itmNote =
+    !pendingDate || pendingDate === selectedDate ? dayEntry?.UserComments?.trim() || undefined : undefined;
   const taskRef: TaskRef = {
     workItemId: workItem.WorkItemId,
     entityId,
@@ -99,10 +110,11 @@ export function TaskRow({
 
   function handleToggle() {
     if (isRunning) {
-      onPause(workItem.WorkItemId);
+      onPause(workItem.WorkItemId, noteDraft);
+      setNoteDraft(""); // la nota queda cerrada con su tramo; la siguiente sesión empieza en blanco
       return;
     }
-    const result = onStart(taskRef, selectedDate);
+    const result = onStart(taskRef, selectedDate, noteDraft);
     if (!result.ok && result.reason === "stale-date") setBlockedTried(true);
     setWarning(result.ok || result.reason === "stale-date" ? null : t("task.error.generic"));
   }
@@ -111,9 +123,10 @@ export function TaskRow({
     e.preventDefault();
     const seconds = hhmmToSeconds(manualValue);
     if (seconds <= 0) return;
-    const result = onAddManual(taskRef, seconds, selectedDate);
+    const result = onAddManual(taskRef, seconds, selectedDate, manualNote);
     if (result.ok) {
       setManualValue("");
+      setManualNote("");
       setShowManual(false);
       setWarning(null);
     } else {
@@ -221,35 +234,47 @@ export function TaskRow({
           ))}
 
         {elapsedSeconds > 0 && (
-          <input
-            className="note-input"
+          <NotesField
+            previous={previousNotes}
+            inItm={itmNote}
             value={noteDraft}
-            onChange={(e) => setNoteDraft(e.target.value)}
+            onChange={setNoteDraft}
             onBlur={handleNoteBlur}
-            placeholder={dayEntry?.UserComments || t("task.notePlaceholder")}
+            placeholder={isRunning ? t("notes.placeholderRunning") : t("notes.placeholder")}
           />
         )}
 
         {showManual ? (
           <form className="manual-entry-form" onSubmit={handleManualSubmit}>
-            <input
-              autoFocus
-              className="manual-entry-input"
-              value={manualValue}
-              onChange={(e) => setManualValue(e.target.value)}
-              placeholder={t("task.manualPlaceholder")}
+            <div className="manual-entry-row">
+              <input
+                autoFocus
+                className="manual-entry-input"
+                value={manualValue}
+                onChange={(e) => setManualValue(e.target.value)}
+                placeholder={t("task.manualPlaceholder")}
+              />
+              <button type="submit">{t("task.manualAdd")}</button>
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => {
+                  setShowManual(false);
+                  setManualValue("");
+                  setManualNote("");
+                }}
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+            {/* Las notas anteriores ya se ven arriba si la tarea tiene tiempo pendiente: no se repiten. */}
+            <NotesField
+              previous={elapsedSeconds > 0 ? "" : previousNotes}
+              inItm={elapsedSeconds > 0 ? undefined : itmNote}
+              value={manualNote}
+              onChange={setManualNote}
+              placeholder={t("notes.placeholderManual")}
             />
-            <button type="submit">{t("task.manualAdd")}</button>
-            <button
-              type="button"
-              className="btn-link"
-              onClick={() => {
-                setShowManual(false);
-                setManualValue("");
-              }}
-            >
-              {t("common.cancel")}
-            </button>
           </form>
         ) : (
           <button className="btn-manual-toggle" onClick={() => setShowManual(true)}>

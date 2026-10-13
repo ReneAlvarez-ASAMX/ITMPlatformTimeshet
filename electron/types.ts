@@ -118,6 +118,12 @@ export interface ItmApiError {
 
 // --- Estado local persistido (cronómetros y tiempo pendiente de sincronizar) ---
 
+/** Un tramo de tiempo capturado (una pausa del temporizador o un añadido manual) con su nota. */
+export interface NoteSegment {
+  seconds: number;
+  note: string;
+}
+
 export interface TimerRecord {
   workItemId: number;
   entityId: number;
@@ -127,7 +133,8 @@ export interface TimerRecord {
   startedAt: number | null; // epoch ms; null si está pausado/detenido
   accumulatedSeconds: number; // segundos no sincronizados aún con ITM Platform
   running: boolean;
-  comment: string; // nota local que se envía como UserComment al sincronizar
+  comment: string; // borrador de la nota del tramo en curso (se cierra al pausar)
+  segments?: NoteSegment[]; // tramos ya cerrados con su nota; al enviar se juntan una nota por línea
 }
 
 export interface AppState {

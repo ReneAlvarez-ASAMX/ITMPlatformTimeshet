@@ -152,11 +152,9 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
     setCollapsed(next);
   }, [visibleProjects]);
 
-  const pending = useMemo(
-    () => collectPending(timers.timers, timers.getElapsedSeconds),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [timers.timers]
-  );
+  // Se calcula en cada renderizado (hay uno por segundo): así el tiempo de un temporizador en marcha
+  // y su nota están siempre al día al revisar o enviar, y no el del último cambio de estado.
+  const pending = collectPending(timers.timers, timers.getElapsedSeconds, Date.now());
 
   // Horas del día seleccionado: ya reportadas en ITM Platform y las de temporizadores sin enviar.
   const reportedDaySeconds = useMemo(() => {

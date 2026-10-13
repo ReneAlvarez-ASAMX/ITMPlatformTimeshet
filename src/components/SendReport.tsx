@@ -136,7 +136,7 @@ export function SendReport({ onClose }: { onClose: () => void }) {
                         <td className="num">+{minutesText(e.addedMinutes)}</td>
                         <td className="num">{minutesText(e.sentMinutes)}</td>
                         <td className="note" title={e.note}>
-                          {e.note}
+                          {e.note.split(/\r\n|\r|\n/).join(" ⏎ ")}
                         </td>
                         <td>
                           <span
