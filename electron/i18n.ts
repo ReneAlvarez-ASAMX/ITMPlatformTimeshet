@@ -117,6 +117,16 @@ const es = {
   "review.pending": "Pendiente",
   "review.running": "{time} (en marcha)",
   "review.otherDate": "Estas horas se registrarán el {date}, no hoy.",
+  "review.discard": "Descartar",
+  "review.discardConfirm":
+    "¿Descartar {time} sin enviar de «{task}» ({date})? Esas horas dejarán de estar pendientes y no se enviarán a ITM Platform.",
+  "review.retry": "Reintentar consulta",
+  "review.dateError":
+    "No se pudo consultar lo ya reportado del {date}: {detail}. No se enviará hasta poder comprobarlo.",
+  "review.nothingSendable":
+    "No se ha enviado nada: no se pudo comprobar lo ya reportado. Reintenta, o descarta las horas que ya no quieras enviar.",
+  "review.partialWarning":
+    "No se pudo consultar lo ya reportado de algunas fechas: esas tareas no se enviarán hasta poder comprobarlo.",
   "review.total": "Total a enviar: {time}",
 
   // Destacadas del día
@@ -326,6 +336,16 @@ const en: Dictionary = {
   "review.pending": "Pending",
   "review.running": "{time} (running)",
   "review.otherDate": "These hours will be recorded on {date}, not today.",
+  "review.discard": "Discard",
+  "review.discardConfirm":
+    "Discard {time} unsent on \u201c{task}\u201d ({date})? Those hours will no longer be pending and will not be sent to ITM Platform.",
+  "review.retry": "Retry lookup",
+  "review.dateError":
+    "Could not check what is already reported for {date}: {detail}. It will not be sent until it can be checked.",
+  "review.nothingSendable":
+    "Nothing was sent: what is already reported could not be checked. Retry, or discard the hours you no longer want to send.",
+  "review.partialWarning":
+    "What is already reported could not be checked for some dates: those tasks will not be sent until it can be checked.",
   "review.total": "Total to send: {time}",
 
   "fav.title": "Today's starred tasks",
@@ -520,6 +540,16 @@ const pt: Dictionary = {
   "review.pending": "Pendente",
   "review.running": "{time} (em andamento)",
   "review.otherDate": "Estas horas serão registradas em {date}, não hoje.",
+  "review.discard": "Descartar",
+  "review.discardConfirm":
+    "Descartar {time} não enviadas de \u201c{task}\u201d ({date})? Essas horas deixarão de estar pendentes e não serão enviadas ao ITM Platform.",
+  "review.retry": "Tentar consulta novamente",
+  "review.dateError":
+    "Não foi possível consultar o que já foi reportado em {date}: {detail}. Não será enviado até que possa ser verificado.",
+  "review.nothingSendable":
+    "Nada foi enviado: não foi possível verificar o que já foi reportado. Tente novamente ou descarte as horas que não quer mais enviar.",
+  "review.partialWarning":
+    "Não foi possível consultar o que já foi reportado em algumas datas: essas tarefas não serão enviadas até que possa ser verificado.",
   "review.total": "Total a enviar: {time}",
 
   "fav.title": "Tarefas destacadas de hoje",

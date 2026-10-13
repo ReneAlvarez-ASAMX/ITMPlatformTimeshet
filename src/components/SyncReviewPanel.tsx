@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { useTimers } from "../hooks/useTimers";
 import type { PendingItem } from "../hooks/useSync";
-import { fetchExistingSeconds } from "../hooks/useSync";
+import { fetchExisting } from "../hooks/useSync";
+import type { ExistingHours } from "../existingHours";
 import { useI18n } from "../i18n";
 import { formatDayShort, formatShort, hhmmToSeconds, secondsToHHMM, todayStr } from "../timeFormat";
 
@@ -25,21 +26,35 @@ export function SyncReviewPanel({
   onCancel,
 }: Props) {
   const { t } = useI18n();
-  const [existingMap, setExistingMap] = useState<Map<string, number> | null>(null);
+  // Lo ya reportado, consultado fecha por fecha. Si una fecha falla, las filas se muestran igualmente
+  // (para poder editarlas o descartarlas) y solo las de esa fecha quedan sin poder enviarse.
+  const [lookup, setLookup] = useState<ExistingHours | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoadError(null);
+    setLookup(null);
     if (pending.length === 0) {
-      setExistingMap(new Map());
+      setLookup({ existing: new Map(), failed: new Map() });
       return;
     }
-    const dates = pending.map((p) => p.date).sort();
-    fetchExistingSeconds(dates[0], dates[dates.length - 1])
-      .then(setExistingMap)
-      .catch((err) => setLoadError(err?.message ?? t("review.loadError")));
-    // Se consulta una sola vez, al abrir el panel; los importes se recalculan localmente al editar.
+    fetchExisting(pending.map((p) => p.date))
+      .then(setLookup)
+      .catch((err) => {
+        setLookup({ existing: new Map(), failed: new Map() });
+        setLoadError(err?.message ?? t("review.loadError"));
+      });
+    // Se consulta al abrir el panel (y al reintentar); los importes se recalculan localmente al editar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const existingMap = lookup?.existing ?? null;
+  const failedDates = lookup?.failed ?? new Map<string, string>();
+  const sendableCount = pending.filter((p) => !failedDates.has(p.date)).length;
 
   return (
     <div className="review-backdrop" onClick={onCancel}>
@@ -51,30 +66,45 @@ export function SyncReviewPanel({
           </button>
         </div>
 
-        {existingMap === null && !loadError && (
-          <div className="loading-state">{t("review.loading")}</div>
-        )}
+        {lookup === null && <div className="loading-state">{t("review.loading")}</div>}
         {loadError && <div className="error-box">{loadError}</div>}
+        {failedDates.size > 0 && (
+          <div className="error-box">
+            <span>{t("review.partialWarning")}</span>
+            <button type="button" className="btn-link" onClick={load}>
+              {t("review.retry")}
+            </button>
+          </div>
+        )}
 
-        {existingMap !== null && pending.length === 0 && (
+        {lookup !== null && pending.length === 0 && (
           <div className="empty-state">{t("review.empty")}</div>
         )}
 
-        {existingMap !== null && pending.length > 0 && (
+        {/* Las filas se muestran siempre, aunque la consulta haya fallado: así siempre se puede descartar. */}
+        {lookup !== null && pending.length > 0 && (
           <div className="review-list">
             {pending.map((item) => {
               const key = `${item.workItemId}_${item.date}`;
-              const existingSeconds = existingMap.get(key) ?? 0;
+              const existingSeconds = existingMap?.get(key) ?? 0;
               const isRunning = Boolean(timers.timers[String(item.workItemId)]?.running);
+              const dateError = failedDates.get(item.date);
               return (
                 <ReviewRow
                   key={key}
                   item={item}
                   existingSeconds={existingSeconds}
+                  existingUnknown={dateError !== undefined}
                   isRunning={isRunning}
-                  error={itemErrors[item.workItemId]}
+                  error={
+                    itemErrors[item.workItemId] ??
+                    (dateError !== undefined
+                      ? t("review.dateError", { date: item.date, detail: dateError })
+                      : undefined)
+                  }
                   onEditSeconds={(seconds) => timers.setAccumulatedSeconds(item.workItemId, seconds)}
                   onEditComment={(comment) => timers.setComment(item.workItemId, comment)}
+                  onDiscard={() => timers.discard(item.workItemId)}
                 />
               );
             })}
@@ -90,9 +120,9 @@ export function SyncReviewPanel({
           <button
             className="btn-sync"
             onClick={onConfirm}
-            disabled={syncing || pending.length === 0 || existingMap === null}
+            disabled={syncing || sendableCount === 0 || lookup === null}
           >
-            {syncing ? t("review.sending") : t("review.confirm", { count: pending.length })}
+            {syncing ? t("review.sending") : t("review.confirm", { count: sendableCount })}
           </button>
         </div>
       </div>
@@ -103,13 +133,25 @@ export function SyncReviewPanel({
 interface ReviewRowProps {
   item: PendingItem;
   existingSeconds: number;
+  /** true si no se pudo consultar lo ya reportado de esa fecha. */
+  existingUnknown: boolean;
   isRunning: boolean;
   error?: string;
   onEditSeconds: (seconds: number) => void;
   onEditComment: (comment: string) => void;
+  onDiscard: () => void;
 }
 
-function ReviewRow({ item, existingSeconds, isRunning, error, onEditSeconds, onEditComment }: ReviewRowProps) {
+function ReviewRow({
+  item,
+  existingSeconds,
+  existingUnknown,
+  isRunning,
+  error,
+  onEditSeconds,
+  onEditComment,
+  onDiscard,
+}: ReviewRowProps) {
   const { t, locale } = useI18n();
   const [hoursDraft, setHoursDraft] = useState(secondsToHHMM(item.seconds));
   const [noteDraft, setNoteDraft] = useState(item.comment);
@@ -128,12 +170,22 @@ function ReviewRow({ item, existingSeconds, isRunning, error, onEditSeconds, onE
 
   const totalSeconds = existingSeconds + item.seconds;
 
+  function handleDiscard() {
+    const message = t("review.discardConfirm", {
+      time: formatShort(item.seconds),
+      task: item.taskName,
+      date: formatDayShort(item.date, locale),
+    });
+    if (window.confirm(message)) onDiscard();
+  }
+
   return (
     <div className="review-row">
       <div className="review-row-info">
         <div className="review-task-name">{item.taskName}</div>
         <div className="review-task-meta">
-          {item.projectName} · {formatDayShort(item.date, locale)} · {t("review.alreadyReported", { time: formatShort(existingSeconds) })}
+          {item.projectName} · {formatDayShort(item.date, locale)}
+          {!existingUnknown && ` · ${t("review.alreadyReported", { time: formatShort(existingSeconds) })}`}
         </div>
         {error && <div className="task-warning">{error}</div>}
         {item.date !== todayStr() && (
@@ -163,7 +215,12 @@ function ReviewRow({ item, existingSeconds, isRunning, error, onEditSeconds, onE
           onBlur={commitNote}
           placeholder={t("task.notePlaceholder")}
         />
-        <div className="review-total">{t("review.total", { time: formatShort(totalSeconds) })}</div>
+        {!existingUnknown && (
+          <div className="review-total">{t("review.total", { time: formatShort(totalSeconds) })}</div>
+        )}
+        <button type="button" className="btn-discard" onClick={handleDiscard} disabled={isRunning}>
+          {t("review.discard")}
+        </button>
       </div>
     </div>
   );

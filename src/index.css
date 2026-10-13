@@ -1243,6 +1243,20 @@ button:disabled {
   font-size: 12px;
 }
 
+.btn-discard {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--danger);
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.btn-discard:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
 .review-date-warning {
   font-size: 12px;
   font-weight: 700;

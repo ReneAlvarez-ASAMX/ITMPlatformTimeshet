@@ -1,5 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import type { SendAuditItem, TimeReportSubmitEntry, TimerRecord } from "../../electron/types";
+import { classifyResponse } from "../../electron/sendResult";
+import { fetchExistingPerDate } from "../existingHours";
+import type { ExistingHours } from "../existingHours";
 import { useI18n } from "../i18n";
 import { hhmmToSeconds, secondsToHHMM } from "../timeFormat";
 
@@ -15,21 +18,9 @@ export interface PendingItem {
   comment: string;
 }
 
-/** Consulta a ITM Platform las horas ya reportadas para el rango de fechas indicado. */
-export async function fetchExistingSeconds(
-  minDate: string,
-  maxDate: string
-): Promise<Map<string, number>> {
-  const fresh = await window.itm.getTimesheet(minDate, maxDate);
-  const existingByKey = new Map<string, number>();
-  for (const project of fresh.TimeReports) {
-    for (const wi of project.WorkItems) {
-      for (const entry of wi.TimeEntries) {
-        existingByKey.set(`${wi.WorkItemId}_${entry.Date}`, hhmmToSeconds(entry.ReportedHours));
-      }
-    }
-  }
-  return existingByKey;
+/** Consulta a ITM Platform lo ya reportado en cada una de las fechas indicadas (fecha por fecha). */
+export function fetchExisting(dates: string[]): Promise<ExistingHours> {
+  return fetchExistingPerDate(dates, (date) => window.itm.getTimesheet(date, date));
 }
 
 export function collectPending(
@@ -68,16 +59,29 @@ export function useSync() {
       setLastError(null);
       setItemErrors({});
       try {
-        const dates = pending.map((p) => p.date).sort();
-        const minDate = dates[0];
-        const maxDate = dates[dates.length - 1];
+        // Lo ya reportado, fecha por fecha: una fecha que no se pueda consultar no bloquea las demás.
+        const { existing: existingByKey, failed: failedDates } = await fetchExisting(
+          pending.map((p) => p.date)
+        );
 
-        const existingByKey = await fetchExistingSeconds(minDate, maxDate);
+        const dateErrors: Record<number, string> = {};
+        const sendable = pending.filter((p) => {
+          const detail = failedDates.get(p.date);
+          if (detail === undefined) return true;
+          // Sin saber lo que ya hay en ITM Platform se sobrescribiría: esta tarea no se envía.
+          dateErrors[p.workItemId] = tRef.current("review.dateError", { date: p.date, detail });
+          return false;
+        });
+        if (sendable.length === 0) {
+          setItemErrors(dateErrors);
+          setLastError(tRef.current("review.nothingSendable"));
+          return { successCount: 0, failureCount: pending.length };
+        }
 
         const entries: TimeReportSubmitEntry[] = [];
         // Datos para el registro local de envíos (CSV): qué había, qué se suma y qué se envía.
         const audit: SendAuditItem[] = [];
-        for (const p of pending) {
+        for (const p of sendable) {
           const existingSeconds = existingByKey.get(`${p.workItemId}_${p.date}`) ?? 0;
           const reportedHours = secondsToHHMM(existingSeconds + p.seconds);
           const comment = p.comment.trim();
@@ -103,19 +107,17 @@ export function useSync() {
 
         const res = await window.itm.submitTimeEntries({ TimeReports: entries }, audit);
 
-        const failedIds = new Set<number>();
-        if (res.Errors && res.Errors.length > 0) {
-          const errMap: Record<number, string> = {};
-          for (const e of res.Errors) {
-            failedIds.add(e.WorkItemId);
-            errMap[e.WorkItemId] = e.Message;
-          }
-          setItemErrors(errMap);
-        }
-
-        const successIds = pending
-          .map((p) => p.workItemId)
-          .filter((id) => !failedIds.has(id));
+        // Mismo criterio que el registro de envíos: un error general sin detalle por tarea
+        // significa que NINGUNA se envió (antes se daban por enviadas y se borraba el pendiente).
+        const { failed, okIds: successIds } = classifyResponse(
+          res,
+          sendable.map((p) => p.workItemId)
+        );
+        const errMap: Record<number, string> = { ...dateErrors };
+        failed.forEach((message, id) => {
+          errMap[id] = message;
+        });
+        if (Object.keys(errMap).length > 0) setItemErrors(errMap);
 
         if (successIds.length > 0) onSynced(successIds);
 
@@ -123,7 +125,10 @@ export function useSync() {
           setLastError(res.StatusMessage || tRef.current("sync.error.send"));
         }
 
-        return { successCount: successIds.length, failureCount: failedIds.size };
+        return {
+          successCount: successIds.length,
+          failureCount: Object.keys(errMap).length,
+        };
       } catch (err: any) {
         setLastError(err?.message ?? tRef.current("sync.error.generic"));
         return { successCount: 0, failureCount: pending.length };

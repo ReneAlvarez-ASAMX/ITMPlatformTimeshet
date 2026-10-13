@@ -71,7 +71,7 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
 
   const { data, loading, error, refetch } = useTimesheet(startIso, endIso);
   const timers = useTimers();
-  const { syncing, lastError, itemErrors, submit } = useSync();
+  const { syncing, lastError, itemErrors: allItemErrors, submit } = useSync();
 
   function handleWeekChange(rawDate: Date) {
     const newStart = startOfWeek(rawDate);
@@ -195,6 +195,11 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
   const weekPendingSeconds = Object.values(timers.timers)
     .filter((t) => t.date >= startIso && t.date <= endIso)
     .reduce((sum, t) => sum + timers.getElapsedSeconds(t.workItemId), 0);
+
+  // Solo se muestran los errores de tareas que siguen pendientes (al descartar o enviar una, su error desaparece).
+  const itemErrors = Object.fromEntries(
+    pending.filter((p) => allItemErrors[p.workItemId] !== undefined).map((p) => [p.workItemId, allItemErrors[p.workItemId]])
+  ) as Record<number, string>;
 
   async function handleConfirmSync() {
     const result = await submit(pending, (ids) => timers.markSynced(ids));

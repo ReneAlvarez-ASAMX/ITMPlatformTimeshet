@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { classifyResponse } from "./sendResult";
 import type {
   SendAuditItem,
   SendLogEntry,
@@ -261,20 +262,14 @@ export async function sendWithLog(opts: LoggedSendOptions): Promise<SubmitTimeEn
     throw err;
   }
 
-  // Mismo criterio que la interfaz para dar una tarea por enviada o fallida.
+  // Mismo criterio que la interfaz (sendResult.classifyResponse) para dar una tarea por enviada o fallida.
+  const { failed: failedMap } = classifyResponse(
+    res,
+    audit.map((a) => a.workItemId)
+  );
+  const failed = new Set(failedMap.keys());
   const messages: Record<number, string> = {};
-  const failed = new Set<number>();
-  for (const e of res.Errors ?? []) {
-    failed.add(e.WorkItemId);
-    messages[e.WorkItemId] = e.Message;
-  }
-  if (res.StatusCode >= 400 && failed.size === 0) {
-    for (const a of audit) {
-      failed.add(a.workItemId);
-      messages[a.workItemId] = res.StatusMessage;
-    }
-  }
-  for (const a of audit) if (!failed.has(a.workItemId)) messages[a.workItemId] = res.StatusMessage ?? "";
+  for (const a of audit) messages[a.workItemId] = failedMap.get(a.workItemId) ?? res.StatusMessage ?? "";
   await appendRows(file, buildRows(batchId, sentAt, "OK", audit, messages, failed)).catch((e) =>
     console.warn("[sendLog] resultado:", e)
   );

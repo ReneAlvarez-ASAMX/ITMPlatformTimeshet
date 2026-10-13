@@ -202,6 +202,12 @@ Detalles importantes:
 
 ---
 
+### Si un pendiente no se puede enviar: descartarlo
+
+En **Revisar y enviar**, cada línea tiene un botón **Descartar**. Quita ese tiempo pendiente de tu equipo (pide confirmación): **no se enviará a ITM Platform y no se puede recuperar**. Úsalo cuando el tiempo ya no quieras enviarlo o sea un resto que no se puede enviar.
+
+Antes de enviar, la aplicación consulta a ITM Platform lo que ya hay reportado **fecha por fecha**. Si no puede consultar una fecha concreta (por ejemplo, un día antiguo), te lo indica en esa línea y **no envía esa tarea** —para no sobrescribir lo que ya hubiera—, pero **sí envía las demás**, y siempre puedes editar o descartar la línea. Pulsa **Reintentar consulta** si fue un fallo puntual.
+
 ### Informe de envíos y registro local (CSV)
 
 Antes de enviar nada a ITM Platform, la aplicación **anota en un archivo CSV de tu equipo** todo lo que va a enviar y, después, el resultado. Sirve para **reconciliar** lo que has enviado con lo que figura en ITM Platform. Si el archivo no se pudiera guardar, **no se envía nada**.
