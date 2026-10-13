@@ -803,12 +803,23 @@ button:disabled {
   margin-top: 2px;
 }
 
+.duration-hint {
+  font-size: 11px;
+  color: var(--success-hover);
+  font-variant-numeric: tabular-nums;
+}
+
+.duration-hint.invalid {
+  color: var(--danger);
+  font-weight: 700;
+}
+
 .manual-entry-input {
   border: 1px solid var(--border);
   border-radius: 3px;
   padding: 5px 8px;
   font-size: 12px;
-  width: 70px;
+  width: 150px;
 }
 
 .manual-entry-form button[type="submit"] {

@@ -3,6 +3,8 @@ import type { WorkItem } from "../../electron/types";
 import type { TaskRef } from "../hooks/useTimers";
 import { useI18n } from "../i18n";
 import { Icon } from "./Icon";
+import { parseDuration } from "../duration";
+import { DurationHint } from "./DurationHint";
 import { NotesField } from "./NotesField";
 import {
   formatClock,
@@ -48,6 +50,12 @@ interface Props {
   onReviewPending: () => void;
 }
 
+/** Convierte lo escrito a h:mm si se entiende; si no, lo deja como está para poder corregirlo. */
+function toHHMM(text: string): string {
+  const seconds = parseDuration(text);
+  return text.trim() && seconds !== null ? secondsToHHMM(seconds) : text;
+}
+
 export function TaskRow({
   workItem,
   entityId,
@@ -76,6 +84,8 @@ export function TaskRow({
   const [showManual, setShowManual] = useState(false);
   const [manualValue, setManualValue] = useState("");
   const [manualNote, setManualNote] = useState("");
+  const [manualTried, setManualTried] = useState(false);
+  const [amountTried, setAmountTried] = useState(false);
   const [noteDraft, setNoteDraft] = useState(comment);
   const [editingStart, setEditingStart] = useState(false);
   const [startValue, setStartValue] = useState("");
@@ -121,12 +131,16 @@ export function TaskRow({
 
   function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const seconds = hhmmToSeconds(manualValue);
-    if (seconds <= 0) return;
+    const seconds = parseDuration(manualValue);
+    if (seconds === null || seconds <= 0) {
+      setManualTried(true); // el aviso explica qué no se ha entendido
+      return;
+    }
     const result = onAddManual(taskRef, seconds, selectedDate, manualNote);
     if (result.ok) {
       setManualValue("");
       setManualNote("");
+      setManualTried(false);
       setShowManual(false);
       setWarning(null);
     } else {
@@ -146,10 +160,15 @@ export function TaskRow({
 
   function handleAmountSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const seconds = hhmmToSeconds(amountValue);
+    const seconds = parseDuration(amountValue);
+    if (seconds === null) {
+      setAmountTried(true);
+      return;
+    }
     const result = onEditAccumulated(workItem.WorkItemId, seconds);
     if (result.ok) {
       setEditingAmount(false);
+      setAmountTried(false);
       setWarning(null);
     } else {
       setWarning(t("task.error.amount"));
@@ -252,6 +271,7 @@ export function TaskRow({
                 className="manual-entry-input"
                 value={manualValue}
                 onChange={(e) => setManualValue(e.target.value)}
+                onBlur={() => setManualValue(toHHMM(manualValue))}
                 placeholder={t("task.manualPlaceholder")}
               />
               <button type="submit">{t("task.manualAdd")}</button>
@@ -262,11 +282,13 @@ export function TaskRow({
                   setShowManual(false);
                   setManualValue("");
                   setManualNote("");
+                  setManualTried(false);
                 }}
               >
                 {t("common.cancel")}
               </button>
             </div>
+            <DurationHint value={manualValue} force={manualTried} />
             {/* Las notas anteriores ya se ven arriba si la tarea tiene tiempo pendiente: no se repiten. */}
             <NotesField
               previous={elapsedSeconds > 0 ? "" : previousNotes}
@@ -292,12 +314,14 @@ export function TaskRow({
               className="amount-edit-input"
               value={amountValue}
               onChange={(e) => setAmountValue(e.target.value)}
+              onBlur={() => setAmountValue(toHHMM(amountValue))}
               placeholder={t("task.manualPlaceholder")}
             />
             <button type="submit">{t("common.ok")}</button>
             <button type="button" className="btn-link" onClick={() => setEditingAmount(false)}>
               {t("common.cancel")}
             </button>
+            <DurationHint value={amountValue} allowZero force={amountTried} />
           </form>
         ) : (
           <span className="timer-clock">{formatClock(elapsedSeconds)}</span>

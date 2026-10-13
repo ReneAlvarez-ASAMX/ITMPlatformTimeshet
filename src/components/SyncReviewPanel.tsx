@@ -4,8 +4,10 @@ import type { PendingItem } from "../hooks/useSync";
 import { fetchExisting } from "../hooks/useSync";
 import type { ExistingHours } from "../existingHours";
 import { useI18n } from "../i18n";
-import { formatDayShort, formatShort, hhmmToSeconds, secondsToHHMM, todayStr } from "../timeFormat";
+import { formatDayShort, formatShort, secondsToHHMM, todayStr } from "../timeFormat";
+import { parseDuration } from "../duration";
 import { mergeComments } from "../timerLogic";
+import { DurationHint } from "./DurationHint";
 
 interface Props {
   pending: PendingItem[];
@@ -165,8 +167,14 @@ function ReviewRow({
   useEffect(() => setNoteDraft(item.draft), [item.draft]);
 
   function commitHours() {
-    const seconds = hhmmToSeconds(hoursDraft);
-    if (seconds !== item.seconds) onEditSeconds(seconds);
+    const seconds = parseDuration(hoursDraft);
+    if (seconds === null) {
+      // No se entiende: se recupera el valor actual en lugar de poner el tiempo a cero.
+      setHoursDraft(secondsToHHMM(item.seconds));
+      return;
+    }
+    setHoursDraft(secondsToHHMM(seconds));
+    if (seconds !== Math.round(item.seconds / 60) * 60) onEditSeconds(seconds);
   }
 
   function commitNote() {
