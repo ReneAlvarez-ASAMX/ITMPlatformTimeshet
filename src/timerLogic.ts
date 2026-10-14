@@ -198,6 +198,14 @@ export function planMarkSynced(existing: TimerRecord, now: number): TimerRecord 
   };
 }
 
+/** Reescribe la nota de un tramo cerrado (índice dentro de los tramos tras `foldDraft`). */
+export function planSetSegmentNote(existing: TimerRecord, index: number, note: string): TimerRecord {
+  const base = foldDraft(existing);
+  const segments = base.segments ?? [];
+  if (index < 0 || index >= segments.length) return existing;
+  return { ...base, segments: segments.map((s, i) => (i === index ? { ...s, note } : s)) };
+}
+
 /** Corrige (reemplaza, no suma) el tiempo pendiente. Si queda a cero, también se descartan sus notas. */
 export function planSetAccumulated(existing: TimerRecord, seconds: number): TimerRecord {
   const clamped = Math.max(0, seconds);

@@ -126,6 +126,8 @@ const es = {
   "notes.placeholderRunning": "Nota de esta sesión (se cierra al pausar)",
   "notes.placeholderManual": "Nota de este tiempo manual",
   "review.noteToSend": "Nota que quedará en ITM Platform",
+  "review.savedNotes": "Notas ya capturadas (editables)",
+  "review.newNote": "Agregar otra nota",
   "review.otherDate": "Estas horas se registrarán el {date}, no hoy.",
   "review.discard": "Descartar",
   "review.discardConfirm":
@@ -367,6 +369,8 @@ const en: Dictionary = {
   "notes.placeholderRunning": "Note for this session (closed when you pause)",
   "notes.placeholderManual": "Note for this manual time",
   "review.noteToSend": "Note that will be left in ITM Platform",
+  "review.savedNotes": "Notes already captured (editable)",
+  "review.newNote": "Add another note",
   "review.otherDate": "These hours will be recorded on {date}, not today.",
   "review.discard": "Discard",
   "review.discardConfirm":
@@ -593,6 +597,8 @@ const pt: Dictionary = {
   "notes.placeholderRunning": "Nota desta sessão (fechada ao pausar)",
   "notes.placeholderManual": "Nota deste tempo manual",
   "review.noteToSend": "Nota que ficará no ITM Platform",
+  "review.savedNotes": "Notas já capturadas (editáveis)",
+  "review.newNote": "Adicionar outra nota",
   "review.otherDate": "Estas horas serão registradas em {date}, não hoje.",
   "review.discard": "Descartar",
   "review.discardConfirm":
