@@ -108,6 +108,7 @@ export function SyncReviewPanel({
                   }
                   onEditSeconds={(seconds) => timers.setAccumulatedSeconds(item.workItemId, seconds)}
                   onEditComment={(comment) => timers.setComment(item.workItemId, comment)}
+                  onEditSegmentNote={(index, note) => timers.setSegmentNote(item.workItemId, index, note)}
                   onDiscard={() => timers.discard(item.workItemId)}
                 />
               );
@@ -145,6 +146,7 @@ interface ReviewRowProps {
   error?: string;
   onEditSeconds: (seconds: number) => void;
   onEditComment: (comment: string) => void;
+  onEditSegmentNote: (index: number, note: string) => void;
   onDiscard: () => void;
 }
 
@@ -157,6 +159,7 @@ function ReviewRow({
   error,
   onEditSeconds,
   onEditComment,
+  onEditSegmentNote,
   onDiscard,
 }: ReviewRowProps) {
   const { t, locale } = useI18n();
@@ -232,13 +235,26 @@ function ReviewRow({
             </span>
           )}
         </label>
+        {item.segmentNotes.length > 0 && (
+          <div className="review-segments">
+            <span className="notes-label">{t("review.savedNotes")}</span>
+            {item.segmentNotes.map((s) => (
+              <SegmentNoteInput
+                key={s.index}
+                note={s.note}
+                seconds={s.seconds}
+                onCommit={(note) => onEditSegmentNote(s.index, note)}
+              />
+            ))}
+          </div>
+        )}
         <textarea
           className="review-note-input"
           rows={2}
           value={noteDraft}
           onChange={(e) => setNoteDraft(e.target.value)}
           onBlur={commitNote}
-          placeholder={t("notes.placeholder")}
+          placeholder={item.segmentNotes.length > 0 ? t("review.newNote") : t("notes.placeholder")}
         />
         {!existingUnknown && (
           <div className="review-total">{t("review.total", { time: formatShort(totalSeconds) })}</div>
@@ -247,6 +263,32 @@ function ReviewRow({
           {t("review.discard")}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Nota de un tramo ya cerrado, editable; el tiempo parcial se muestra aparte y se añade solo al enviar. */
+function SegmentNoteInput({
+  note,
+  seconds,
+  onCommit,
+}: {
+  note: string;
+  seconds: number;
+  onCommit: (note: string) => void;
+}) {
+  const [draft, setDraft] = useState(note);
+  useEffect(() => setDraft(note), [note]);
+  return (
+    <div className="review-segment">
+      <textarea
+        className="review-note-input"
+        rows={1}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => draft !== note && onCommit(draft)}
+      />
+      <span className="review-segment-time">({formatShort(Math.max(60, seconds))})</span>
     </div>
   );
 }

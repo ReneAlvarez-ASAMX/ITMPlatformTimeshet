@@ -4,7 +4,7 @@ import { classifyResponse } from "../../electron/sendResult";
 import { fetchExistingPerDate } from "../existingHours";
 import type { ExistingHours } from "../existingHours";
 import { useI18n } from "../i18n";
-import { composeNote, mergeComments } from "../timerLogic";
+import { composeNote, foldDraft, mergeComments } from "../timerLogic";
 import { hhmmToSeconds, secondsToHHMM } from "../timeFormat";
 
 const MIN_SYNCABLE_SECONDS = 30;
@@ -18,6 +18,8 @@ export interface PendingItem {
   seconds: number;
   /** Borrador de la nota del tramo en curso (editable). */
   draft: string;
+  /** Tramos cerrados con su nota (editable); `index` es la posición real dentro del registro. */
+  segmentNotes: { index: number; seconds: number; note: string }[];
   /** Nota completa de este envío: tramos cerrados + borrador, una por línea con su tiempo parcial. */
   note: string;
 }
@@ -33,7 +35,9 @@ export function collectPending(
   now: number = Date.now()
 ): PendingItem[] {
   return Object.values(timers)
-    .map((t) => ({
+    .map((raw) => {
+      const t = foldDraft(raw);
+      return {
       workItemId: t.workItemId,
       entityId: t.entityId,
       taskName: t.taskName,
@@ -41,8 +45,12 @@ export function collectPending(
       date: t.date,
       seconds: getElapsedSeconds(t.workItemId),
       draft: t.comment ?? "",
+      segmentNotes: (t.segments ?? [])
+        .map((s, index) => ({ index, seconds: s.seconds, note: s.note }))
+        .filter((s) => s.note.trim()),
       note: composeNote(t, now),
-    }))
+    };
+    })
     .filter((t) => t.seconds >= MIN_SYNCABLE_SECONDS)
     .sort((a, b) => a.date.localeCompare(b.date) || a.taskName.localeCompare(b.taskName));
 }

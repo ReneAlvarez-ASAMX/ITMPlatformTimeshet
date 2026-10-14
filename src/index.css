@@ -14,6 +14,7 @@
   --danger-bg: #fdecea;
   --success: #469a1f;
   --success-hover: #3a7f19;
+  --reported: #1b7f8c;
   --warning-bg: #fff4dc;
   --warning-text: #8a5a00;
   --demo: #d6336c;
@@ -671,6 +672,12 @@ button:disabled {
 .task-meta {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* Con horas ya reportadas en ITM Platform, el texto se distingue del gris de "0m reportadas". */
+.task-meta .has-reported {
+  color: var(--reported);
+  font-weight: 700;
 }
 
 .task-warning {
@@ -1560,4 +1567,23 @@ button:disabled {
   align-items: center;
   gap: 12px;
   margin: 16px 0;
+}
+
+.review-segments {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.review-segment {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-segment-time {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }

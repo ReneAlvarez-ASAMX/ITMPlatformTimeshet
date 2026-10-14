@@ -7,6 +7,7 @@ import {
   planMarkSynced,
   planPause,
   planSetAccumulated,
+  planSetSegmentNote,
   planStart,
 } from "../timerLogic";
 import { formatShort, todayStr } from "../timeFormat";
@@ -136,6 +137,16 @@ export function useTimers() {
     [persist]
   );
 
+  const setSegmentNote = useCallback(
+    (workItemId: number, index: number, note: string) => {
+      const key = String(workItemId);
+      const existing = stateRef.current.timers[key];
+      if (!existing) return;
+      persist({ timers: { ...stateRef.current.timers, [key]: planSetSegmentNote(existing, index, note) } });
+    },
+    [persist]
+  );
+
   const pause = useCallback(
     (workItemId: number, draft?: string) => {
       const key = String(workItemId);
@@ -224,6 +235,7 @@ export function useTimers() {
     addManualSeconds,
     setAccumulatedSeconds,
     setComment,
+    setSegmentNote,
     adjustStartTime,
     favorites: state.favorites,
     isFavorite,

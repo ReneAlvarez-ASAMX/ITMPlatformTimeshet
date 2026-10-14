@@ -210,7 +210,9 @@ export function TaskRow({
           </div>
         </div>
         <div className="task-meta">
-          {t("task.reported", { day: dayLabel, time: formatShort(reportedSeconds) })}
+          <span className={reportedSeconds > 0 ? "has-reported" : ""}>
+            {t("task.reported", { day: dayLabel, time: formatShort(reportedSeconds) })}
+          </span>
           {elapsedSeconds > 0 &&
             t("task.unsentOn", { time: formatShort(elapsedSeconds), date: pendingLabel })}
         </div>
