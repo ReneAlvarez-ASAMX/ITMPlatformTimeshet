@@ -5,6 +5,7 @@ import {
   composeNote,
   mergeComments,
   planManualAdd,
+  planMarkSynced,
   planPause,
   planStart,
   type TaskInfo,
@@ -53,5 +54,40 @@ describe("timerLogic", () => {
     expect(mergeComments("previa", "nueva")).toBe(`previa${NOTE_SEPARATOR}nueva`);
     expect(mergeComments("previa\r\nnueva", "nueva")).toBe("previa\r\nnueva");
     expect(mergeComments("previa", "  ")).toBe("");
+  });
+
+  describe("planMarkSynced (ticket §1.1)", () => {
+    const today = "2026-11-04";
+    const HOUR = 60 * MIN;
+
+    it("con el temporizador en marcha resta lo enviado y conserva el resto", () => {
+      // A en marcha desde las 09:00; se envían 120 min calculados a las 11:00 y la respuesta llega a las 13:00.
+      const started = planStart(undefined, task, today, T0);
+      if (!started.ok) throw new Error("debería iniciar");
+      const synced = planMarkSynced(started.record, 120 * 60, T0 + 4 * HOUR);
+      expect(synced).toMatchObject({ running: true, startedAt: T0 + 4 * HOUR, accumulatedSeconds: 120 * 60 });
+    });
+
+    it("lo transcurrido mientras se envía sigue pendiente", () => {
+      const started = planStart(undefined, task, today, T0);
+      if (!started.ok) throw new Error("debería iniciar");
+      // Se envían 240 min (09:00-13:00) y la respuesta llega 5 s después.
+      const synced = planMarkSynced(started.record, 240 * 60, T0 + 4 * HOUR + 5000);
+      expect(synced.accumulatedSeconds).toBe(5);
+      expect(synced.running).toBe(true);
+    });
+
+    it("con el temporizador parado deja a cero el pendiente enviado y sus notas", () => {
+      const added = planManualAdd(undefined, task, 5400, today, T0, "Revisión");
+      if (!added.ok) throw new Error("debería añadir");
+      const synced = planMarkSynced(added.record, 5400, T0 + HOUR);
+      expect(synced).toMatchObject({ running: false, startedAt: null, accumulatedSeconds: 0, comment: "", segments: [] });
+    });
+
+    it("no deja tiempo negativo si se envió más de lo que queda", () => {
+      const added = planManualAdd(undefined, task, 600, today, T0);
+      if (!added.ok) throw new Error("debería añadir");
+      expect(planMarkSynced(added.record, 900, T0).accumulatedSeconds).toBe(0);
+    });
   });
 });
