@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from "react";
 import type { SendAuditItem, TimeReportSubmitEntry, TimerRecord } from "../../electron/types";
+import type { MessageKey } from "../../electron/i18n";
 import { classifyResponse } from "../../electron/sendResult";
 import { fetchExistingPerDate } from "../existingHours";
 import type { ExistingHours } from "../existingHours";
 import { useI18n } from "../i18n";
-import type { MessageKey } from "../../electron/i18n";
 import { composeNote, mergeComments } from "../timerLogic";
 import { hhmmToSeconds, secondsToHHMM } from "../timeFormat";
 
