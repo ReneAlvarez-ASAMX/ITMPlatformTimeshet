@@ -187,11 +187,15 @@ export function planManualAdd(
   return { ok: true, record };
 }
 
-/** Tras enviar con éxito: el pendiente y sus notas quedan a cero (si sigue en marcha, cuenta desde ahora). */
-export function planMarkSynced(existing: TimerRecord, now: number): TimerRecord {
+/**
+ * Tras enviar con éxito: se restan los segundos realmente enviados y se descartan las notas enviadas.
+ * Lo transcurrido desde que se calculó el envío (p. ej. mientras esperaba la respuesta) sigue pendiente;
+ * si el temporizador sigue en marcha, ese resto pasa al acumulado y el tramo en vivo cuenta desde ahora.
+ */
+export function planMarkSynced(existing: TimerRecord, sentSeconds: number, now: number): TimerRecord {
   return {
     ...existing,
-    accumulatedSeconds: 0,
+    accumulatedSeconds: Math.max(0, elapsed(existing, now) - sentSeconds),
     comment: "",
     segments: [],
     startedAt: existing.running ? now : null,

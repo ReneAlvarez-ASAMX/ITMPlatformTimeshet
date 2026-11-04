@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { SendAuditItem, TimeReportSubmitEntry, TimerRecord } from "../../electron/types";
+import type { MessageKey } from "../../electron/i18n";
 import { classifyResponse } from "../../electron/sendResult";
 import { fetchExistingPerDate } from "../existingHours";
 import type { ExistingHours } from "../existingHours";
@@ -47,6 +48,135 @@ export function collectPending(
     .sort((a, b) => a.date.localeCompare(b.date) || a.taskName.localeCompare(b.taskName));
 }
 
+/** Lo que se dio por enviado de cada tarea: los segundos que hay que restar de su pendiente. */
+export interface SyncedItem {
+  workItemId: number;
+  seconds: number;
+}
+
+export interface SyncOutcome {
+  synced: SyncedItem[];
+  itemErrors: Record<number, string>;
+  lastError: string | null;
+  failureCount: number;
+}
+
+type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
+
+/**
+ * Envía a ITM Platform lo pendiente. `getPending` se llama al empezar el envío para usar el tiempo
+ * vivo de ese momento (no el del último renderizado). Devuelve los segundos enviados de cada tarea:
+ * quien lo llama los RESTA del pendiente, así lo transcurrido durante el envío no se pierde.
+ */
+export async function sendPending(getPending: () => PendingItem[], t: Translate): Promise<SyncOutcome> {
+  const pending = getPending();
+  if (pending.length === 0) return { synced: [], itemErrors: {}, lastError: null, failureCount: 0 };
+  try {
+    // Lo ya reportado, fecha por fecha: una fecha que no se pueda consultar no bloquea las demás.
+    const { existing: existingByKey, comments: existingComments, failed: failedDates } = await fetchExisting(
+      pending.map((p) => p.date)
+    );
+
+    const dateErrors: Record<number, string> = {};
+    const sendable = pending.filter((p) => {
+      const detail = failedDates.get(p.date);
+      if (detail === undefined) return true;
+      // Sin saber lo que ya hay en ITM Platform se sobrescribiría: esta tarea no se envía.
+      dateErrors[p.workItemId] = t("review.dateError", { date: p.date, detail });
+      return false;
+    });
+    if (sendable.length === 0) {
+      return {
+        synced: [],
+        itemErrors: dateErrors,
+        lastError: t("review.nothingSendable"),
+        failureCount: pending.length,
+      };
+    }
+
+    const entries: TimeReportSubmitEntry[] = [];
+    // Datos para el registro local de envíos (CSV): qué había, qué se suma y qué se envía.
+    const audit: SendAuditItem[] = [];
+    for (const p of sendable) {
+      const existingSeconds = existingByKey.get(`${p.workItemId}_${p.date}`) ?? 0;
+      const reportedHours = secondsToHHMM(existingSeconds + p.seconds);
+      // Se AÑADE a la nota que ITM ya tiene ese día; nunca se reemplaza.
+      const comment = mergeComments(existingComments.get(`${p.workItemId}_${p.date}`), p.note);
+      entries.push({
+        EntityId: p.entityId,
+        WorkItemId: p.workItemId,
+        Date: p.date,
+        ReportedHours: reportedHours,
+        ...(comment ? { UserComment: comment } : {}),
+      });
+      audit.push({
+        workItemId: p.workItemId,
+        entityId: p.entityId,
+        projectName: p.projectName,
+        taskName: p.taskName,
+        date: p.date,
+        existingMinutes: Math.round(existingSeconds / 60),
+        addedMinutes: Math.round(p.seconds / 60),
+        sentMinutes: Math.round(hhmmToSeconds(reportedHours) / 60),
+        comment,
+      });
+    }
+
+    const res = await window.itm.submitTimeEntries({ TimeReports: entries }, audit);
+
+    // Mismo criterio que el registro de envíos. Con un error general (>= 400) ITM Platform rechaza el
+    // lote entero: ninguna tarea se da por enviada sin comprobarlo.
+    const { failed, okIds, rejected } = classifyResponse(
+      res,
+      sendable.map((p) => p.workItemId)
+    );
+    const listed = new Set((res.Errors ?? []).map((e) => e.WorkItemId));
+    const okSet = new Set(okIds);
+    if (rejected) {
+      for (const id of await confirmedOnServer(entries, listed)) okSet.add(id);
+    }
+
+    const errMap: Record<number, string> = { ...dateErrors };
+    failed.forEach((message, id) => {
+      if (okSet.has(id)) return;
+      // Las que no tenían error propio no se guardaron por culpa de otras del mismo envío.
+      errMap[id] = rejected && !listed.has(id) ? t("sync.error.batchRejected") : message;
+    });
+
+    const synced = sendable
+      .filter((p) => okSet.has(p.workItemId))
+      .map((p) => ({ workItemId: p.workItemId, seconds: p.seconds }));
+    return {
+      synced,
+      itemErrors: errMap,
+      lastError: res.StatusCode >= 400 ? res.StatusMessage || t("sync.error.send") : null,
+      failureCount: Object.keys(errMap).length,
+    };
+  } catch (err: any) {
+    return {
+      synced: [],
+      itemErrors: {},
+      lastError: err?.message ?? t("sync.error.generic"),
+      failureCount: pending.length,
+    };
+  }
+}
+
+/**
+ * Tras un rechazo del lote, relee las horas del servidor y devuelve las tareas (de las no listadas en
+ * `Errors`) cuyo valor en ITM Platform coincide con el enviado. Si una fecha no se puede releer, sus
+ * tareas no se confirman.
+ */
+async function confirmedOnServer(entries: TimeReportSubmitEntry[], ownErrors: Set<number>): Promise<number[]> {
+  const candidates = entries.filter((e) => !ownErrors.has(e.WorkItemId));
+  if (candidates.length === 0) return [];
+  const { existing, failed: unreadable } = await fetchExisting(candidates.map((e) => e.Date));
+  return candidates
+    .filter((e) => !unreadable.has(e.Date))
+    .filter((e) => existing.get(`${e.WorkItemId}_${e.Date}`) === hhmmToSeconds(e.ReportedHours))
+    .map((e) => e.WorkItemId);
+}
+
 export function useSync() {
   const { t } = useI18n();
   const tRef = useRef(t);
@@ -57,88 +187,18 @@ export function useSync() {
 
   const submit = useCallback(
     async (
-      pending: PendingItem[],
-      onSynced: (workItemIds: number[]) => void
+      getPending: () => PendingItem[],
+      onSynced: (items: SyncedItem[]) => void
     ): Promise<{ successCount: number; failureCount: number }> => {
-      if (pending.length === 0) return { successCount: 0, failureCount: 0 };
       setSyncing(true);
       setLastError(null);
       setItemErrors({});
       try {
-        // Lo ya reportado, fecha por fecha: una fecha que no se pueda consultar no bloquea las demás.
-        const { existing: existingByKey, comments: existingComments, failed: failedDates } = await fetchExisting(
-          pending.map((p) => p.date)
-        );
-
-        const dateErrors: Record<number, string> = {};
-        const sendable = pending.filter((p) => {
-          const detail = failedDates.get(p.date);
-          if (detail === undefined) return true;
-          // Sin saber lo que ya hay en ITM Platform se sobrescribiría: esta tarea no se envía.
-          dateErrors[p.workItemId] = tRef.current("review.dateError", { date: p.date, detail });
-          return false;
-        });
-        if (sendable.length === 0) {
-          setItemErrors(dateErrors);
-          setLastError(tRef.current("review.nothingSendable"));
-          return { successCount: 0, failureCount: pending.length };
-        }
-
-        const entries: TimeReportSubmitEntry[] = [];
-        // Datos para el registro local de envíos (CSV): qué había, qué se suma y qué se envía.
-        const audit: SendAuditItem[] = [];
-        for (const p of sendable) {
-          const existingSeconds = existingByKey.get(`${p.workItemId}_${p.date}`) ?? 0;
-          const reportedHours = secondsToHHMM(existingSeconds + p.seconds);
-          // Se AÑADE a la nota que ITM ya tiene ese día; nunca se reemplaza.
-          const comment = mergeComments(existingComments.get(`${p.workItemId}_${p.date}`), p.note);
-          entries.push({
-            EntityId: p.entityId,
-            WorkItemId: p.workItemId,
-            Date: p.date,
-            ReportedHours: reportedHours,
-            ...(comment ? { UserComment: comment } : {}),
-          });
-          audit.push({
-            workItemId: p.workItemId,
-            entityId: p.entityId,
-            projectName: p.projectName,
-            taskName: p.taskName,
-            date: p.date,
-            existingMinutes: Math.round(existingSeconds / 60),
-            addedMinutes: Math.round(p.seconds / 60),
-            sentMinutes: Math.round(hhmmToSeconds(reportedHours) / 60),
-            comment,
-          });
-        }
-
-        const res = await window.itm.submitTimeEntries({ TimeReports: entries }, audit);
-
-        // Mismo criterio que el registro de envíos: un error general sin detalle por tarea
-        // significa que NINGUNA se envió (antes se daban por enviadas y se borraba el pendiente).
-        const { failed, okIds: successIds } = classifyResponse(
-          res,
-          sendable.map((p) => p.workItemId)
-        );
-        const errMap: Record<number, string> = { ...dateErrors };
-        failed.forEach((message, id) => {
-          errMap[id] = message;
-        });
-        if (Object.keys(errMap).length > 0) setItemErrors(errMap);
-
-        if (successIds.length > 0) onSynced(successIds);
-
-        if (res.StatusCode >= 400 && successIds.length === 0) {
-          setLastError(res.StatusMessage || tRef.current("sync.error.send"));
-        }
-
-        return {
-          successCount: successIds.length,
-          failureCount: Object.keys(errMap).length,
-        };
-      } catch (err: any) {
-        setLastError(err?.message ?? tRef.current("sync.error.generic"));
-        return { successCount: 0, failureCount: pending.length };
+        const outcome = await sendPending(getPending, (key, params) => tRef.current(key, params));
+        setItemErrors(outcome.itemErrors);
+        setLastError(outcome.lastError);
+        if (outcome.synced.length > 0) onSynced(outcome.synced);
+        return { successCount: outcome.synced.length, failureCount: outcome.failureCount };
       } finally {
         setSyncing(false);
       }
