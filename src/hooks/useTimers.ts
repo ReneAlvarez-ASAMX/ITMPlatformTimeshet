@@ -183,15 +183,15 @@ export function useTimers() {
     [persist]
   );
 
-  /** Tras sincronizar con éxito, deja el acumulado local en cero (conservando si sigue corriendo). */
+  /** Tras sincronizar con éxito, resta del pendiente local los segundos enviados (conservando si sigue corriendo). */
   const markSynced = useCallback(
-    (workItemIds: number[]) => {
+    (items: { workItemId: number; seconds: number }[]) => {
       const next = { ...stateRef.current.timers };
-      for (const id of workItemIds) {
-        const key = String(id);
+      for (const { workItemId, seconds } of items) {
+        const key = String(workItemId);
         const existing = next[key];
         if (!existing) continue;
-        next[key] = planMarkSynced(existing, Date.now());
+        next[key] = planMarkSynced(existing, seconds, Date.now());
       }
       persist({ timers: next });
     },

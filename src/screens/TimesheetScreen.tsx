@@ -200,7 +200,12 @@ export function TimesheetScreen({ account, mode, onLogout }: Props) {
   ) as Record<number, string>;
 
   async function handleConfirmSync() {
-    const result = await submit(pending, (ids) => timers.markSynced(ids));
+    // Lo pendiente se calcula en el momento del envío (no el del último renderizado) y, al marcarlo
+    // como enviado, se restan solo los segundos enviados: no se pierde lo que transcurre mientras tanto.
+    const result = await submit(
+      () => collectPending(timers.timers, timers.getElapsedSeconds, Date.now()),
+      (items) => timers.markSynced(items)
+    );
     if (result.successCount > 0) refetch();
     if (result.successCount > 0 && result.failureCount === 0) setReviewOpen(false);
   }

@@ -15,6 +15,8 @@ Los criterios de referencia están en [ESTANDARES-DE-INGENIERIA.md](../ESTANDARE
 
 ## 1. Pérdida de horas (prioridad máxima)
 
+**Corregido en 1.2.3** (§1.1 y §1.2), con tests en `src/timerLogic.test.ts`, `src/hooks/useSync.test.ts` y `electron/sendResult.test.ts`. Lo pendiente se calcula al empezar el envío, `markSynced` resta los segundos enviados y, con `StatusCode >= 400`, solo se dan por enviadas las entradas que coinciden al releer las horas del servidor.
+
 ### 1.1 Sincronizar con un temporizador en marcha pierde tiempo
 
 En `TimesheetScreen.tsx`, `pending` se calcula con `useMemo` que depende solo de `timers.timers`. Con el paso del tiempo no se recalcula: solo cuando cambia el estado (iniciar, pausar, editar). Al enviar, `markSynced` deja el acumulado en cero y reinicia `startedAt` a "ahora". El tiempo transcurrido entre el último recálculo y el envío no se envía ni se conserva.
